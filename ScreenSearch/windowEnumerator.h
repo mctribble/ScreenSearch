@@ -26,8 +26,11 @@ class WindowEnumerator
 		//getter/setters
 		std::vector<WindowData>* getWindowList() { return &windowList; }
 
-		//purges and repopulates the window list.  Should be called prior to searching said list to ensure contents are accurate.  Note that the list is quite verbose.
-		void updateWindowList();
+		//purges and repopulates the window list with all top-level windows.  Should be called prior to searching said list to ensure contents are accurate.
+		void topLevelWindowList();
+
+		//like above, but returns all windows that are children of the given window
+		void childWindowList(HWND parentWindow);
 	private:
 		//private constructor/destructor because this is a singleton
 		WindowEnumerator() {};
