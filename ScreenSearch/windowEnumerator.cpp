@@ -32,6 +32,20 @@ void WindowEnumerator::childWindowList(HWND parentWindow)
 	EnumChildWindows(parentWindow, addWindow, NULL);
 }
 
+HWND WindowEnumerator::findWindowByTitle(LPCWSTR title)
+{
+	HWND result = NULL;
+	for (unsigned int i = 0; i < windowList.size(); i++)
+	{
+		if (lstrcmp(title, windowList.at(i).title) == 0)
+		{
+			result = windowList.at(i).handle;
+			break;
+		}
+	}
+	return result;
+}
+
 //adds hWnd to the window list.  Helper function for topLevelWindowList() and childWindowList() that windows calls once for each window
 BOOL CALLBACK addWindow(HWND hWnd, LPARAM lParam)
 {

@@ -29,8 +29,11 @@ class WindowEnumerator
 		//purges and repopulates the window list with all top-level windows.  Should be called prior to searching said list to ensure contents are accurate.
 		void topLevelWindowList();
 
-		//like above, but returns all windows that are children of the given window
+		//like above, but finds all windows that are children of the given window
 		void childWindowList(HWND parentWindow);
+
+		//searches the current window list (NOT all windows!) for a window by this title.  Returns its handle if it exists and NULL if it does not.
+		HWND findWindowByTitle(LPCWSTR title);
 	private:
 		//private constructor/destructor because this is a singleton
 		WindowEnumerator() {};

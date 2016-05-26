@@ -59,37 +59,34 @@ void testDriver()
 	WindowEnumerator::getInstance()->topLevelWindowList();
 
 	//find a window with matching title
-	HWND targetWindow = NULL;
-	for (unsigned int i = 0; i < windowList->size(); i++)
-	{
-		if (lstrcmp(TEST2_TARGET_WINDOW_TITLE, windowList->at(i).title) == 0)
-		{
-			targetWindow = windowList->at(i).handle;
-			break;
-		}
-	}
+	HWND targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
 
-	//confirm results
+	//if a window was not found, prompt user and wait until it exists.
 	if (targetWindow == NULL)
 	{
-		wcout << "Could not find a window with title " << TEST2_TARGET_WINDOW_TITLE << endl;
-	}
-	else
-	{
-		//we found the target window.  Enumerate its children and list them.
-		wcout << "Children of " << TEST2_TARGET_WINDOW_TITLE << ":" << endl;
-
-		//populate the list of children (we dont have to retrieve it this time because we already have the pointer)
-		WindowEnumerator::getInstance()->childWindowList(targetWindow);
-
-		//print info of each
-		if (windowList->size() == 0)
-			wcout << "<none>" << endl;
-		for (unsigned int i = 0; i < windowList->size(); i++)
+		wcout << "Could not find a window with title " << TEST2_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl; 
+		while (targetWindow == NULL)
 		{
-			wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
+			Sleep(1000);
+			WindowEnumerator::getInstance()->topLevelWindowList();
+			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
 		}
 	}
+	
+	//we found the target window.  Enumerate its children and list them.
+	wcout << "Children of " << TEST2_TARGET_WINDOW_TITLE << ":" << endl;
+
+	//populate the list of children (we dont have to retrieve it this time because we already have the pointer)
+	WindowEnumerator::getInstance()->childWindowList(targetWindow);
+
+	//print info of each
+	if (windowList->size() == 0)
+		wcout << "<none>" << endl;
+	for (unsigned int i = 0; i < windowList->size(); i++)
+	{
+		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
+	}
+	
 
 	//END TEST 2: List children of given window
 
