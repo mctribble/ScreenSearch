@@ -24,12 +24,18 @@
     <ClInclude Include="windowEnumerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ScreenHighlighter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ScreenSearch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="windowEnumerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenHighlighter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
