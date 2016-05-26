@@ -1,25 +1,54 @@
 #include "windowEnumerator.h"
+#include <iostream>
 
-//adds hWnd to the window list.  Helper function for updateWindowList() that windows calls once for each window
+using namespace std;
+
+//predeclaration
 BOOL CALLBACK addWindow(HWND hWnd, LPARAM lParam);
 
-//purges and repopulates the window list.  Should be called prior to searching said list to ensure contents are accurate
-void updateWindowList()
+/*
+ *	purges and repopulates the window list.  Should be called prior to searching said list to ensure contents are accurate
+ *	note that many things that users dont think about as windows are in fact windows, including taskbar icons, the start button, and individual browser tabs.
+ *	as a result, this list is MUCH larger than you might expect.
+ *	I intentionally chose not to cull this list in case there is ever a reason to poll such things, but it is straightforward to cull this list.  
+ *	See https://blogs.msdn.microsoft.com/oldnewthing/20071008-00/?p=24863/ and https://msdn.microsoft.com/en-us/library/windows/desktop/ms633530%28v=vs.85%29.aspx
+ */
+void WindowEnumerator::updateWindowList()
 {
+	//empty the list
+	windowList.clear();
+
+	//fill it up again (windows calls addWindow once for each open window
 	EnumWindows(addWindow, NULL);
 }
 
 //adds hWnd to the window list.  Helper function for updateWindowList() that windows calls once for each window
 BOOL CALLBACK addWindow(HWND hWnd, LPARAM lParam)
 {
-	//create a struct for this window
-	WindowData newData;
+	WindowData newData; //create a struct for this window
 
 	//populate it
-	newData.handle = hWnd;
-	GetWindowText(hWnd, newData.title, newData.MAX_TITLE_LENGTH);
+	newData.handle = hWnd; //save the handle
+	DWORD result = GetWindowText(hWnd, newData.title, WindowData::MAX_TITLE_LENGTH); //get the window title
+	
+	//error checking
+	if (result == 0)
+	{
+		//GetWindowText failed to give us a title.  put in a placeholder
+		lstrcpy(newData.title, L"<untitled>");
+
+		//now try to work out what happened
+		int errorCode = GetLastError();
+
+		//GetWindowText() can return zero for a lot of reasons, including the window just not having a title.
+		//if the "error code" is 0, there wasn't an error at all and we can ignore it
+		//otherwise, we print the error code (see https://msdn.microsoft.com/en-us/library/cc231199.aspx)
+		if (errorCode != 0)
+			cout << "ERROR: " << errorCode << endl;
+	}
 
 	//add it to the list
+	WindowEnumerator::getInstance()->getWindowList()->push_back(newData);
 
 	return TRUE;
 }
