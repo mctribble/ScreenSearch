@@ -11,24 +11,28 @@
 using namespace std;
 using namespace Gdiplus;
 
-//gets the class ID for the given encoder (from)
+//gets the class ID for the given encoder (from https://msdn.microsoft.com/en-us/library/ms533843%28v=vs.85%29.aspx)
 int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
 	UINT  num = 0;          // number of image encoders
 	UINT  size = 0;         // size of the image encoder array in bytes
 
-	ImageCodecInfo* pImageCodecInfo = NULL;
+	ImageCodecInfo* pImageCodecInfo = NULL;  //array of encoders
 
+	//get info about how the array will be structured
 	GetImageEncodersSize(&num, &size);
 	if (size == 0)
 		return -1;  // Failure
 
+	//allocate array
 	pImageCodecInfo = (ImageCodecInfo*)(malloc(size));
 	if (pImageCodecInfo == NULL)
 		return -1;  // Failure
 
+	//populate array
 	GetImageEncoders(num, size, pImageCodecInfo);
 
+	//find the desired encoder
 	for (UINT j = 0; j < num; ++j)
 	{
 		if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
@@ -57,22 +61,39 @@ bool bitmapFromWindow(HWND src, HBITMAP* dest)
 	int windowWidth = windowRect.right - windowRect.left;	//window width
 	int windowHeight = windowRect.bottom - windowRect.top;	//window height
 
+	//client area dimensions
+	RECT clientRect;
+	GetClientRect(src, &clientRect);
+	int clientAreaWidth = clientRect.right - clientRect.left;
+	int clientAreaHeight = clientRect.bottom - clientRect.top;
+
 	//device contexts
-	HDC desktopContext = GetDC(GetDesktopWindow());
-	HDC destContext = CreateCompatibleDC(desktopContext);
+	HDC srcContext	= GetDC(src);						//context of the window to capture
+	HDC capContext	= CreateCompatibleDC(srcContext);	//used to hold intermediate result from printWindow()
+	HDC destContext = CreateCompatibleDC(srcContext);	//used for final output
 
-	//create the bitmap
-	*dest = CreateCompatibleBitmap(desktopContext, windowWidth, windowHeight);
+	//create the bitmaps
+	HBITMAP capBitmap = CreateCompatibleBitmap(srcContext, windowWidth, windowHeight);
+	*dest = CreateCompatibleBitmap(srcContext, clientAreaWidth, clientAreaHeight);
 
+	//plug our new bitmaps into their contexts so we can draw to them
+	SelectObject(capContext,  capBitmap); 
 	SelectObject(destContext, *dest);
 
-	//copy data.  BitBlt() returned black for windows owned in other processes, so I work around that by using PrintWindow() instead.
-	//this works if the window is obscured by other windows, but not if it is hidden or minimized
-	//oddly, the PW_RENDERFULLCONTENT flag used here is not referenced on MSDN, but it is referenced on other sites
-	PrintWindow(src, destContext, PW_RENDERFULLCONTENT);
+	//copy data.  BitBlt() is the standard method, but this returned black for windows owned by other processes, so I use PrintWindow() instead.
+	//PrintWindow() is intended for use with printers, but works even if the window owned by another process and/or obscured by other windows. 
+	//hidden or minimized windows may not be captured properly. (TODO: work around this?)
+	//oddly, the PW_RENDERFULLCONTENT flag used here is not documented on MSDN, but it is referenced elsewhere.  it is required to properly capture some windows.
+	PrintWindow(src, capContext, PW_RENDERFULLCONTENT);
+
+	////PrintWindow() creates a black border, so we have to process the image a second time to crop these out
+	int cropX = (windowWidth - clientAreaWidth) / 2;
+	BitBlt(destContext, 0, 0, clientAreaWidth, clientAreaHeight, capContext, cropX, 0, SRCCOPY);
 
 	//cleanup
-	ReleaseDC(src, desktopContext);
+	ReleaseDC(src, srcContext);
+	DeleteObject(capBitmap);
+	DeleteDC(capContext);
 	DeleteDC(destContext);
 
 	return true;

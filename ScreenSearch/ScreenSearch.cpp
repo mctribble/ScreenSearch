@@ -165,7 +165,7 @@ void testDriver()
 	
 	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
 	wchar_t TEST4_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-	lstrcpy(TEST4_TARGET_WINDOW_TITLE, L"Untitled - Notepad"); //tested on Win10 Calculator app, but should work on anything with this title that has children
+	lstrcpy(TEST4_TARGET_WINDOW_TITLE, L"xkcd: Feel Old"); //tested on Win10 Calculator app, but should work on anything with this title
 
 	wcout << endl << "TEST 4: capture screenshot of \"" << TEST4_TARGET_WINDOW_TITLE << "\" window and save it to a file" << endl;
 
