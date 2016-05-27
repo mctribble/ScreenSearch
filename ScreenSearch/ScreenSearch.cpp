@@ -3,12 +3,17 @@
 // locates various ojects in images either captured at runtime or imported from files
 
 #include <fcntl.h>
+#include "HBitmapUtils.h"
 #include <iostream>
 #include <io.h>
 #include "windowEnumerator.h"
 #include "ScreenHighlighter.h"
+#include <gdiplus.h>
+
+#pragma comment(lib,"gdiplus.lib")
 
 using namespace std;
+using namespace Gdiplus;
 
 //predeclarations
 void testDriver();
@@ -19,7 +24,15 @@ int main(int argc, wchar_t* argv[])
 	//WARNING: this seems to break cout, though there isnt much reason to use it anyway in a unicode app
 	_setmode(_fileno(stdout), _O_U16TEXT);
 
+	//init GDI+
+	GdiplusStartupInput gdiplusStartupInput;
+	ULONG_PTR           gdiplusToken;
+	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
 	testDriver(); //for now, just run the test driver.  Later this will be a menu option
+
+	//shut down GDI+
+	GdiplusShutdown(gdiplusToken);
 
 	return 0;
 }
@@ -49,7 +62,7 @@ void testDriver()
 
 	//TEST 2: List children of given window
 
-	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted.
+	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
 	wchar_t TEST2_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
 	lstrcpy(TEST2_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
 
@@ -96,31 +109,48 @@ void testDriver()
 
 	//TEST 3: highlight children of window from test 2
 		
-	wcout << endl << "TEST 3: highlight child windows found in test 2" << endl;
+	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
+	wchar_t TEST3_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
+	lstrcpy(TEST3_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title that has children
 
-	//only perform test 3 if test 2 succeeded, since it relies on the results of test 2
-	if ((targetWindow == NULL) || (windowList->size() == 0))
+	wcout << endl << "TEST 3: highlight children of \"" << TEST3_TARGET_WINDOW_TITLE << "\" window" << endl;
+
+	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+	WindowEnumerator::getInstance()->topLevelWindowList();
+
+	//find a window with matching title
+	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST3_TARGET_WINDOW_TITLE);
+
+	//if a window was not found, prompt user and wait until it exists.
+	if (targetWindow == NULL)
 	{
-		wcout << "Could not perform test: Test 2 did not find a window with children to highlight." << endl;
-	}
-	else
-	{
-		//repeatedly draw highlights until escape is pressed
-		wcout << "Highlighting child windows.  Hold escape to clear highlights and continue." << endl;
-		while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
+		wcout << "Could not find a window with title " << TEST3_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
+		while (targetWindow == NULL)
 		{
-			//draw a highlight for each child window
-			for (unsigned int i = 0; i < windowList->size(); i++)
-			{
-				ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
-			}
+			Sleep(1000);
+			WindowEnumerator::getInstance()->topLevelWindowList();
+			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
+		}
+	}
 
-			Sleep(500); //dont hog system resources to do nothing but draw rectangles over and over
+	//repopulate window list with children of the target window.  (note: commenting this out results in red boxes EVERYWHERE)
+	WindowEnumerator::getInstance()->childWindowList(targetWindow);
+
+	//repeatedly draw highlights until escape is pressed
+	wcout << "Highlighting child windows.  Hold escape to clear highlights and continue." << endl;
+	while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
+	{
+		//draw a highlight for each child window
+		for (unsigned int i = 0; i < windowList->size(); i++)
+		{
+			ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
 		}
 
-		//clear highlights for the parent window
-		ScreenHighlighter::getInstance()->clearWindowHighlights(targetWindow);
+		Sleep(500); //dont hog system resources to do nothing but draw rectangles over and over
 	}
+
+	//clear highlights for the parent window
+	ScreenHighlighter::getInstance()->clearWindowHighlights(targetWindow);
 
 	//END TEST 3: highlight children of given window
 	
@@ -128,5 +158,51 @@ void testDriver()
 	wcout << endl << "Press enter to continue." << endl;
 	cin.get();
 
+	//TEST 4: save screencap of a window
+	
+	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
+	wchar_t TEST4_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
+	lstrcpy(TEST4_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title that has children
+
+	wcout << endl << "TEST 4: capture screenshot of \"" << TEST4_TARGET_WINDOW_TITLE << "\" window and save it to a file" << endl;
+
+	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+	WindowEnumerator::getInstance()->topLevelWindowList();
+
+	//find a window with matching title
+	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST4_TARGET_WINDOW_TITLE);
+
+	//if a window was not found, prompt user and wait until it exists.
+	if (targetWindow == NULL)
+	{
+		wcout << "Could not find a window with title " << TEST4_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
+		while (targetWindow == NULL)
+		{
+			Sleep(1000);
+			WindowEnumerator::getInstance()->topLevelWindowList();
+			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST4_TARGET_WINDOW_TITLE);
+		}
+	}
+
+	//get screencap
+	HBITMAP bitmap = NULL;
+	if (bitmapFromWindow(targetWindow, &bitmap) == false)
+	{
+		wcout << "failed to perform screen capture!" << endl;
+	}
+	else
+	{
+		//save it
+		bitmapToFile(&bitmap, L"test4.bmp");
+	}
+
+	//cleanup
+	DeleteObject(bitmap);
+
+	//END TEST 4: save screencap of a window
+	
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 }
 
