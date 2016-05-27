@@ -17,6 +17,11 @@ using namespace Gdiplus;
 
 //predeclarations
 void testDriver();
+void test1(HWND targetWindow, vector<WindowData>* windowList);
+void test2(HWND targetWindow, vector<WindowData>* windowList);
+void test3(HWND targetWindow, vector<WindowData>* windowList);
+void test4(HWND targetWindow, vector<WindowData>* windowList);
+void test5(HWND targetWindow, vector<WindowData>* windowList);
 
 int main(int argc, wchar_t* argv[])
 {
@@ -45,7 +50,44 @@ void testDriver()
 	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//TEST 1: List top-level windows
+	test1(targetWindow, windowList);
 
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	//TEST 2: List children of given window
+	test2(targetWindow, windowList);
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	//TEST 3: highlight children of target window
+	test3(targetWindow, windowList);
+	
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	//TEST 4: save screencap of a window
+	test4(targetWindow, windowList);
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	//TEST 5: load an image and save it as something else
+	test5(targetWindow, windowList);
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+}
+
+//TEST 1: List top-level windows
+void test1(HWND targetWindow, vector<WindowData>* windowList)
+{
 	wcout << "TEST 1: fetch top level windows" << endl;
 
 	//populate and fetch the list of open windows
@@ -56,15 +98,11 @@ void testDriver()
 	{
 		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
 	}
+}
 
-	//END TEST 1: List top-level windows
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 2: List children of given window
-
+//TEST 2: List children of given window
+void test2(HWND targetWindow, vector<WindowData>* windowList)
+{
 	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
 	wchar_t TEST2_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
 	lstrcpy(TEST2_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
@@ -80,7 +118,7 @@ void testDriver()
 	//if a window was not found, prompt user and wait until it exists.
 	if (targetWindow == NULL)
 	{
-		wcout << "Could not find a window with title " << TEST2_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl; 
+		wcout << "Could not find a window with title " << TEST2_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
 		while (targetWindow == NULL)
 		{
 			Sleep(1000);
@@ -88,7 +126,7 @@ void testDriver()
 			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
 		}
 	}
-	
+
 	//we found the target window.  Enumerate its children and list them.
 	wcout << "Children of " << TEST2_TARGET_WINDOW_TITLE << ":" << endl;
 
@@ -102,16 +140,11 @@ void testDriver()
 	{
 		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
 	}
-	
+}
 
-	//END TEST 2: List children of given window
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 3: highlight children of target window
-		
+//TEST 3: highlight children of target window
+void test3(HWND targetWindow, vector<WindowData>* windowList)
+{
 	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
 	wchar_t TEST3_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
 	lstrcpy(TEST3_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title that has children
@@ -154,15 +187,11 @@ void testDriver()
 
 	//clear highlights
 	ScreenHighlighter::getInstance()->clearWindowHighlights();
+}
 
-	//END TEST 3: highlight children of target window
-	
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 4: save screencap of a window
-	
+//TEST 4: save screencap of a window
+void test4(HWND targetWindow, vector<WindowData>* windowList)
+{
 	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
 	wchar_t TEST4_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
 	lstrcpy(TEST4_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
@@ -201,16 +230,12 @@ void testDriver()
 
 	//cleanup
 	DeleteObject(test4Bitmap);
+}
 
-	//END TEST 4: save screencap of a window
-	
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 5: load an image and save it as something else
-
-	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
+//TEST 5: load an image and save it as something else
+void test5(HWND targetWindow, vector<WindowData>* windowList)
+{
+	//filenames for the test
 	wchar_t TEST5_IN[20] = L"test4.bmp";
 	wchar_t TEST5_OUT[20] = L"test5.png";
 
@@ -220,18 +245,11 @@ void testDriver()
 	{
 		wcout << "Load failed!" << endl;
 	}
-	else 
+	else
 	{
 		if (bitmapToFile(&test5Bitmap, TEST5_OUT) == false)
 		{
 			wcout << "Save failed!" << endl;
 		}
 	}
-
-	//END TEST 5: load an image and save it as something else
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
 }
-
