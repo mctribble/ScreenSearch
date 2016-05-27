@@ -44,123 +44,123 @@ void testDriver()
 	HWND targetWindow = NULL;
 	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
-//	//TEST 1: List top-level windows
-//
-//	wcout << "TEST 1: fetch top level windows" << endl;
-//
-//	//populate and fetch the list of open windows
-//	WindowEnumerator::getInstance()->topLevelWindowList();
-//
-//	//print info of each
-//	for (unsigned int i = 0; i < windowList->size(); i++)
-//	{
-//		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
-//	}
-//
-//	//END TEST 1: List top-level windows
-//
-//	//prompt for keypress before continuing
-//	wcout << endl << "Press enter to continue." << endl;
-//	cin.get();
-//
-//	//TEST 2: List children of given window
-//
-//	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
-//	wchar_t TEST2_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-//	lstrcpy(TEST2_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
-//
-//	wcout << endl << "TEST 2: find children of \"" << TEST2_TARGET_WINDOW_TITLE << "\" window, if it exists" << endl;
-//
-//	//populate the list of open windows 
-//	WindowEnumerator::getInstance()->topLevelWindowList();
-//
-//	//find a window with matching title
-//	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
-//
-//	//if a window was not found, prompt user and wait until it exists.
-//	if (targetWindow == NULL)
-//	{
-//		wcout << "Could not find a window with title " << TEST2_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl; 
-//		while (targetWindow == NULL)
-//		{
-//			Sleep(1000);
-//			WindowEnumerator::getInstance()->topLevelWindowList();
-//			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
-//		}
-//	}
-//	
-//	//we found the target window.  Enumerate its children and list them.
-//	wcout << "Children of " << TEST2_TARGET_WINDOW_TITLE << ":" << endl;
-//
-//	//populate the list of children (we dont have to retrieve it this time because we already have the pointer)
-//	WindowEnumerator::getInstance()->childWindowList(targetWindow);
-//
-//	//print info of each
-//	if (windowList->size() == 0)
-//		wcout << "<none>" << endl;
-//	for (unsigned int i = 0; i < windowList->size(); i++)
-//	{
-//		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
-//	}
-//	
-//
-//	//END TEST 2: List children of given window
-//
-//	//prompt for keypress before continuing
-//	wcout << endl << "Press enter to continue." << endl;
-//	cin.get();
-//
-//	//TEST 3: highlight children of target window
-//		
-//	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
-//	wchar_t TEST3_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-//	lstrcpy(TEST3_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title that has children
-//
-//	wcout << endl << "TEST 3: highlight children of \"" << TEST3_TARGET_WINDOW_TITLE << "\" window" << endl;
-//
-//	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
-//	WindowEnumerator::getInstance()->topLevelWindowList();
-//
-//	//find a window with matching title
-//	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST3_TARGET_WINDOW_TITLE);
-//
-//	//if a window was not found, prompt user and wait until it exists.
-//	if (targetWindow == NULL)
-//	{
-//		wcout << "Could not find a window with title " << TEST3_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
-//		while (targetWindow == NULL)
-//		{
-//			Sleep(1000);
-//			WindowEnumerator::getInstance()->topLevelWindowList();
-//			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST3_TARGET_WINDOW_TITLE);
-//		}
-//	}
-//
-//	//repopulate window list with children of the target window.  (note: commenting this out results in red boxes EVERYWHERE)
-//	WindowEnumerator::getInstance()->childWindowList(targetWindow);
-//
-//	//repeatedly draw highlights until escape is pressed
-//	wcout << "Highlighting child windows.  Hold escape to clear highlights and continue." << endl;
-//	while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
-//	{
-//		//draw a highlight for each child window
-//		for (unsigned int i = 0; i < windowList->size(); i++)
-//		{
-//			ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
-//		}
-//
-//		Sleep(100); //dont hog system resources to do nothing but draw rectangles over and over
-//	}
-//
-//	//clear highlights
-//	ScreenHighlighter::getInstance()->clearWindowHighlights();
-//
-//	//END TEST 3: highlight children of target window
-//	
-//	//prompt for keypress before continuing
-//	wcout << endl << "Press enter to continue." << endl;
-//	cin.get();
-//
+	//TEST 1: List top-level windows
+
+	wcout << "TEST 1: fetch top level windows" << endl;
+
+	//populate and fetch the list of open windows
+	WindowEnumerator::getInstance()->topLevelWindowList();
+
+	//print info of each
+	for (unsigned int i = 0; i < windowList->size(); i++)
+	{
+		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
+	}
+
+	//END TEST 1: List top-level windows
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	//TEST 2: List children of given window
+
+	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
+	wchar_t TEST2_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
+	lstrcpy(TEST2_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
+
+	wcout << endl << "TEST 2: find children of \"" << TEST2_TARGET_WINDOW_TITLE << "\" window, if it exists" << endl;
+
+	//populate the list of open windows 
+	WindowEnumerator::getInstance()->topLevelWindowList();
+
+	//find a window with matching title
+	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
+
+	//if a window was not found, prompt user and wait until it exists.
+	if (targetWindow == NULL)
+	{
+		wcout << "Could not find a window with title " << TEST2_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl; 
+		while (targetWindow == NULL)
+		{
+			Sleep(1000);
+			WindowEnumerator::getInstance()->topLevelWindowList();
+			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
+		}
+	}
+	
+	//we found the target window.  Enumerate its children and list them.
+	wcout << "Children of " << TEST2_TARGET_WINDOW_TITLE << ":" << endl;
+
+	//populate the list of children (we dont have to retrieve it this time because we already have the pointer)
+	WindowEnumerator::getInstance()->childWindowList(targetWindow);
+
+	//print info of each
+	if (windowList->size() == 0)
+		wcout << "<none>" << endl;
+	for (unsigned int i = 0; i < windowList->size(); i++)
+	{
+		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
+	}
+	
+
+	//END TEST 2: List children of given window
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	//TEST 3: highlight children of target window
+		
+	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
+	wchar_t TEST3_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
+	lstrcpy(TEST3_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title that has children
+
+	wcout << endl << "TEST 3: highlight children of \"" << TEST3_TARGET_WINDOW_TITLE << "\" window" << endl;
+
+	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+	WindowEnumerator::getInstance()->topLevelWindowList();
+
+	//find a window with matching title
+	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST3_TARGET_WINDOW_TITLE);
+
+	//if a window was not found, prompt user and wait until it exists.
+	if (targetWindow == NULL)
+	{
+		wcout << "Could not find a window with title " << TEST3_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
+		while (targetWindow == NULL)
+		{
+			Sleep(1000);
+			WindowEnumerator::getInstance()->topLevelWindowList();
+			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST3_TARGET_WINDOW_TITLE);
+		}
+	}
+
+	//repopulate window list with children of the target window.  (note: commenting this out results in red boxes EVERYWHERE)
+	WindowEnumerator::getInstance()->childWindowList(targetWindow);
+
+	//repeatedly draw highlights until escape is pressed
+	wcout << "Highlighting child windows.  Hold escape to clear highlights and continue." << endl;
+	while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
+	{
+		//draw a highlight for each child window
+		for (unsigned int i = 0; i < windowList->size(); i++)
+		{
+			ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
+		}
+
+		Sleep(100); //dont hog system resources to do nothing but draw rectangles over and over
+	}
+
+	//clear highlights
+	ScreenHighlighter::getInstance()->clearWindowHighlights();
+
+	//END TEST 3: highlight children of target window
+	
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
 	//TEST 4: save screencap of a window
 	
 	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
