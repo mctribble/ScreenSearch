@@ -103,8 +103,14 @@ bool bitmapFromWindow(HWND src, HBITMAP* dest)
 //requires that dest is NULL to prevent overwriting existing bitmaps
 bool bitmapFromFile(LPCWSTR src, HBITMAP* dest)
 {
-	throw new exception("Not Implemented.");
-	return false;
+	if (*dest != NULL)
+		return false;
+
+	Bitmap* bmp = Bitmap::FromFile(src);
+	if (bmp->GetHBITMAP(NULL, dest) == Ok)
+		return true;
+	else
+		return false;
 }
 
 //saves the given bitmap to a .bmp file

@@ -165,7 +165,7 @@ void testDriver()
 	
 	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
 	wchar_t TEST4_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-	lstrcpy(TEST4_TARGET_WINDOW_TITLE, L"xkcd: Feel Old"); //tested on Win10 Calculator app, but should work on anything with this title
+	lstrcpy(TEST4_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
 
 	wcout << endl << "TEST 4: capture screenshot of \"" << TEST4_TARGET_WINDOW_TITLE << "\" window and save it to a file" << endl;
 
@@ -188,22 +188,48 @@ void testDriver()
 	}
 
 	//get screencap
-	HBITMAP bitmap = NULL;
-	if (bitmapFromWindow(targetWindow, &bitmap) == false)
+	HBITMAP test4Bitmap = NULL;
+	if (bitmapFromWindow(targetWindow, &test4Bitmap) == false)
 	{
 		wcout << "failed to perform screen capture!" << endl;
 	}
 	else
 	{
 		//save it
-		bitmapToFile(&bitmap, L"test4.bmp");
+		bitmapToFile(&test4Bitmap, L"test4.bmp");
 	}
 
 	//cleanup
-	DeleteObject(bitmap);
+	DeleteObject(test4Bitmap);
 
 	//END TEST 4: save screencap of a window
 	
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	//TEST 5: load an image and save it as something else
+
+	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
+	wchar_t TEST5_IN[20] = L"test4.bmp";
+	wchar_t TEST5_OUT[20] = L"test5.png";
+
+	wcout << endl << "TEST 5: load " << TEST5_IN << " and save it to " << TEST5_OUT << endl;
+	HBITMAP test5Bitmap = NULL;
+	if (bitmapFromFile(TEST5_IN, &test5Bitmap) == false)
+	{
+		wcout << "Load failed!" << endl;
+	}
+	else 
+	{
+		if (bitmapToFile(&test5Bitmap, TEST5_OUT) == false)
+		{
+			wcout << "Save failed!" << endl;
+		}
+	}
+
+	//END TEST 5: load an image and save it as something else
+
 	//prompt for keypress before continuing
 	wcout << endl << "Press enter to continue." << endl;
 	cin.get();

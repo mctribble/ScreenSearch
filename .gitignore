@@ -42,6 +42,7 @@ local.properties
 *.sln.docstates
 ScreenSearch.VC.opendb
 ScreenSearch/test4.bmp
+ScreenSearch/test5.png
 
 # Build results
 
