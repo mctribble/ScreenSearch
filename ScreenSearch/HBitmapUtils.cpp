@@ -53,23 +53,26 @@ bool bitmapFromWindow(HWND src, HBITMAP* dest)
 
 	//window dimensions
 	RECT windowRect;										//screen coordinates of the window
-	GetClientRect(src, &windowRect);
+	GetWindowRect(src, &windowRect);
 	int windowWidth = windowRect.right - windowRect.left;	//window width
 	int windowHeight = windowRect.bottom - windowRect.top;	//window height
 
 	//device contexts
-	HDC srcContext = GetDC(src);
-	HDC destContext = CreateCompatibleDC(srcContext);
+	HDC desktopContext = GetDC(GetDesktopWindow());
+	HDC destContext = CreateCompatibleDC(desktopContext);
 
 	//create the bitmap
-	*dest = CreateCompatibleBitmap(srcContext, windowWidth, windowHeight);
+	*dest = CreateCompatibleBitmap(desktopContext, windowWidth, windowHeight);
 
-	//copy data
-	BitBlt( destContext, 0, 0, windowWidth, windowHeight,
-			srcContext,  0, 0, SRCCOPY | CAPTUREBLT); 
+	SelectObject(destContext, *dest);
+
+	//copy data.  BitBlt() returned black for windows owned in other processes, so I work around that by using PrintWindow() instead.
+	//this works if the window is obscured by other windows, but not if it is hidden or minimized
+	//oddly, the PW_RENDERFULLCONTENT flag used here is not referenced on MSDN, but it is referenced on other sites
+	PrintWindow(src, destContext, PW_RENDERFULLCONTENT);
 
 	//cleanup
-	ReleaseDC(src, srcContext);
+	ReleaseDC(src, desktopContext);
 	DeleteDC(destContext);
 
 	return true;
@@ -116,15 +119,11 @@ bool bitmapToFile(HBITMAP* src, LPCWSTR dest)
 	CLSID encoderID;
 	GetEncoderClsid(encoderTarget, &encoderID);
 
-	//get palette from the desktop device context
-	HDC desktopContext = GetDC(0);
-	HPALETTE desktopPalette = (HPALETTE)GetCurrentObject(desktopContext, OBJ_PAL);
-
 	//get Bitmap from HBITMAP
-	Bitmap* bmp = Bitmap::FromHBITMAP(*src, desktopPalette);
+	Bitmap* bmp = Bitmap::FromHBITMAP(*src, NULL);
 
 	//we can finally save the image
-	bmp->Save(dest, &encoderID, NULL);
+	bmp->Save(dest, &encoderID);
 	
 	return true;
 }

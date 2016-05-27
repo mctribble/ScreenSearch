@@ -39,10 +39,8 @@ void ScreenHighlighter::highlight(HWND hWnd)
 }
 
 //clears all highlights over the given window
-void ScreenHighlighter::clearWindowHighlights(HWND hWnd)
+void ScreenHighlighter::clearWindowHighlights()
 {
-	//invalidate the screen at the given window to force a redraw.  This results in removing leftover highlighting.
-	RECT windowRect;
-	GetWindowRect(hWnd, &windowRect);
-	InvalidateRect(NULL, &windowRect, TRUE);
+	//invalidate the screen to force a redraw.  This results in removing leftover highlighting.
+	InvalidateRect(NULL, NULL, TRUE);
 }

@@ -16,7 +16,7 @@ public:
 	void highlight(int left, int top, int right, int bottom);	//rect, by coords
 	void highlight(HWND hWnd);									//rect, by window handle
 
-	void clearWindowHighlights(HWND hWnd); //clears all highlights over the given window
+	void clearWindowHighlights(); //clears all highlights
 private:
 	//private constructor/destructor since this is a singleton
 	ScreenHighlighter();
