@@ -113,8 +113,9 @@ bool bitmapFromFile(LPCWSTR src, HBITMAP* dest)
 		return false;
 }
 
-//saves the given bitmap to a .bmp file
-bool bitmapToFile(HBITMAP* src, LPCWSTR dest)
+//saves the given bitmap to a .bmp file of the given name.  if showPrompt is true, ask the user if they want
+//to see the file after it is saved.  (showPrompt defaults to false)
+bool bitmapToFile(HBITMAP* src, LPCWSTR dest, bool showPrompt)
 {
 	//error check: filename string must be at least 5 characters to be valid
 	int destLength = lstrlen(dest);
@@ -152,5 +153,21 @@ bool bitmapToFile(HBITMAP* src, LPCWSTR dest)
 	//we can finally save the image
 	bmp->Save(dest, &encoderID);
 	
+	//if set, offer to show the resulting file to the user
+	if (showPrompt)
+	{
+		//ask user until they respond in a valid way or the input stream closes
+		char response = '0';
+		do
+		{
+			wcout << "Saved file " << dest << " to disk.  Would you like to open it? [y/n]" << endl;
+			cin >> response;
+		} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+		//if yes, open file with the default program
+		if (response == 'y' || response == 'Y')
+			ShellExecute(0, 0, dest, 0, 0, SW_SHOW);
+	}
+
 	return true;
 }

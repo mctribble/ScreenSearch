@@ -30,6 +30,9 @@
     <ClInclude Include="HBitmapUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OpenCVUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ScreenSearch.cpp">
@@ -42,6 +45,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HBitmapUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenCVUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

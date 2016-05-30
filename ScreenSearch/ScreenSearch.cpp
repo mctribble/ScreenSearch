@@ -9,6 +9,7 @@
 #include "windowEnumerator.h"
 #include "ScreenHighlighter.h"
 #include <gdiplus.h>
+#include "OpenCVUtils.h"
 
 #pragma comment(lib,"gdiplus.lib")
 
@@ -22,6 +23,8 @@ void test2(HWND targetWindow, vector<WindowData>* windowList);
 void test3(HWND targetWindow, vector<WindowData>* windowList);
 void test4(HWND targetWindow, vector<WindowData>* windowList);
 void test5(HWND targetWindow, vector<WindowData>* windowList);
+void test6(HWND targetWindow, vector<WindowData>* windowList);
+void test7(HWND targetWindow, vector<WindowData>* windowList);
 
 int main(int argc, wchar_t* argv[])
 {
@@ -45,44 +48,21 @@ int main(int argc, wchar_t* argv[])
 //tests the system
 void testDriver()
 {
-	//used by multiple tests in this driver
+	//used by multiple tests in this driver.  
+	//each driver initializes them on their own to do what they need, so this is just to save allocations
 	HWND targetWindow = NULL;
 	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
-	//TEST 1: List top-level windows
-	test1(targetWindow, windowList);
+	//tests.  each one prompts for input after.
+	//each test is self-contained so they can be commented out without affecting the others
 
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 2: List children of given window
-	test2(targetWindow, windowList);
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 3: highlight children of target window
-	test3(targetWindow, windowList);
-	
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 4: save screencap of a window
-	test4(targetWindow, windowList);
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	//TEST 5: load an image and save it as something else
-	test5(targetWindow, windowList);
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
+	test1(targetWindow, windowList); //TEST 1: List top-level windows
+	test2(targetWindow, windowList); //TEST 2: List children of Calculator Window
+	test3(targetWindow, windowList); //TEST 3: highlight children of Calculator window
+	test4(targetWindow, windowList); //TEST 4: save screencap of Calculator window
+	test5(targetWindow, windowList); //TEST 5: load the screencap from test 4 and save it in another format
+	test6(targetWindow, windowList); //TEST 6: find contours of a sample image
+	test7(targetWindow, windowList); //TEST 7: find contours of window screencap (much less sensitive than test 6, but does not cull as aggressively)
 }
 
 //TEST 1: List top-level windows
@@ -91,13 +71,17 @@ void test1(HWND targetWindow, vector<WindowData>* windowList)
 	wcout << "TEST 1: fetch top level windows" << endl;
 
 	//populate and fetch the list of open windows
-	WindowEnumerator::getInstance()->topLevelWindowList();
+	WindowEnumerator::getInstance()->topLevelWindowList();//TEST 6: find contours of a sample image
 
 	//print info of each
 	for (unsigned int i = 0; i < windowList->size(); i++)
 	{
 		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
 	}
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 }
 
 //TEST 2: List children of given window
@@ -140,6 +124,10 @@ void test2(HWND targetWindow, vector<WindowData>* windowList)
 	{
 		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
 	}
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 }
 
 //TEST 3: highlight children of target window
@@ -187,6 +175,10 @@ void test3(HWND targetWindow, vector<WindowData>* windowList)
 
 	//clear highlights
 	ScreenHighlighter::getInstance()->clearWindowHighlights();
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 }
 
 //TEST 4: save screencap of a window
@@ -224,12 +216,16 @@ void test4(HWND targetWindow, vector<WindowData>* windowList)
 	}
 	else
 	{
-		//save it
-		bitmapToFile(&test4Bitmap, L"test4.bmp");
+		//save it and offer to show the user
+		bitmapToFile(&test4Bitmap, L"test4.bmp", true);
 	}
 
 	//cleanup
 	DeleteObject(test4Bitmap);
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 }
 
 //TEST 5: load an image and save it as something else
@@ -241,15 +237,126 @@ void test5(HWND targetWindow, vector<WindowData>* windowList)
 
 	wcout << endl << "TEST 5: load " << TEST5_IN << " and save it to " << TEST5_OUT << endl;
 	HBITMAP test5Bitmap = NULL;
+	//load
 	if (bitmapFromFile(TEST5_IN, &test5Bitmap) == false)
 	{
 		wcout << "Load failed!" << endl;
 	}
 	else
 	{
-		if (bitmapToFile(&test5Bitmap, TEST5_OUT) == false)
+		//save and offer to show it to the user after
+		if (bitmapToFile(&test5Bitmap, TEST5_OUT, true) == false)
 		{
 			wcout << "Save failed!" << endl;
 		}
 	}
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+}
+
+//TEST 6: find contours of a sample image
+void test6(HWND targetWindow, vector<WindowData>* windowList)
+{
+	wcout << L"TEST 6: find contours of a sample image" << endl;
+
+	char			TEST6_IN[20] = "javaPageSample.bmp";	//name of the sample image
+	const int		TEST6_THRESHOLD = 10;					//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
+	const double	TEST6_MIN_SIZE = 500.0;					//culls contours smaller than this
+	char			TEST6_OUT[20] = "test6.bmp";			//name of the output file image (char)
+
+	//delegate to opencvutils
+	cv::Mat result = findCountoursFromFile(TEST6_IN, TEST6_THRESHOLD, TEST6_MIN_SIZE);
+	
+	//save result to file
+	cv::imwrite(TEST6_OUT, result);
+
+	//offer to show result to the user
+	//ask user until they respond in a valid way or the input stream closes
+	char response = '0';
+	do
+	{
+		wcout << "Saved file " << TEST6_OUT << " to disk.  Would you like to open it? [y/n]" << endl;
+		cin >> response;
+	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+	//if yes, open file with the default program
+	if (response == 'y' || response == 'Y')
+		ShellExecuteA(0, 0, TEST6_OUT, 0, 0, SW_SHOW);
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+}
+
+//TEST 7: find contours of window screencap (much less sensitive than test 6, but does not cull as aggressively)
+void test7(HWND targetWindow, vector<WindowData>* windowList)
+{
+	wchar_t TEST7_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
+	lstrcpy(TEST7_TARGET_WINDOW_TITLE, L"Calculator");		//tested on Win10 Calculator app, but should work on anything with this title
+	const int		TEST7_THRESHOLD = 50;					//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
+	const double	TEST7_MIN_SIZE = 50.0;					//culls contours smaller than this
+	char			TEST7_OUT[20] = "test7.bmp";			//name of the output file image (char)
+
+	wcout << endl << "TEST 7: capture screenshot of \"" << TEST7_TARGET_WINDOW_TITLE << "\" window, search it for contours, and save the result to a file" << endl;
+
+	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+	WindowEnumerator::getInstance()->topLevelWindowList();
+
+	//find a window with matching title
+	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST7_TARGET_WINDOW_TITLE);
+
+	//if a window was not found, prompt user and wait until it exists.
+	if (targetWindow == NULL)
+	{
+		wcout << "Could not find a window with title " << TEST7_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
+		while (targetWindow == NULL)
+		{
+			Sleep(1000);
+			WindowEnumerator::getInstance()->topLevelWindowList();
+			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST7_TARGET_WINDOW_TITLE);
+		}
+	}
+
+	//get screencap
+	HBITMAP test7Bitmap = NULL;
+	if (bitmapFromWindow(targetWindow, &test7Bitmap) == false)
+	{
+		wcout << "failed to perform screen capture!" << endl;
+	}
+	else
+	{
+		//silently save it to a temporary file
+		bitmapToFile(&test7Bitmap, L"temp.bmp", false);
+
+		//use the temp. file as an input for contour detection
+		cv::Mat result = findCountoursFromFile("temp.bmp", TEST7_THRESHOLD, TEST7_MIN_SIZE);
+
+		//save result to file
+		cv::imwrite(TEST7_OUT, result);
+
+		//delete our temp image
+		remove("temp.bmp");
+
+		//offer to show result to the user
+		//ask user until they respond in a valid way or the input stream closes
+		char response = '0';
+		do
+		{
+			wcout << "Saved file " << TEST7_OUT << " to disk.  Would you like to open it? [y/n]" << endl;
+			cin >> response;
+		} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+		//if yes, open file with the default program
+		if (response == 'y' || response == 'Y')
+			ShellExecuteA(0, 0, TEST7_OUT, 0, 0, SW_SHOW);
+	}
+
+	//cleanup
+	DeleteObject(test7Bitmap);
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 }

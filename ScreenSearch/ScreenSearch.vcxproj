@@ -152,12 +152,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HBitmapUtils.h" />
+    <ClInclude Include="OpenCVUtils.h" />
     <ClInclude Include="ScreenHighlighter.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="windowEnumerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HBitmapUtils.cpp" />
+    <ClCompile Include="OpenCVUtils.cpp" />
     <ClCompile Include="ScreenHighlighter.cpp" />
     <ClCompile Include="ScreenSearch.cpp" />
     <ClCompile Include="windowEnumerator.cpp" />

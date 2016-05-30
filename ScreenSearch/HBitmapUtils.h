@@ -12,5 +12,6 @@ bool bitmapFromWindow(HWND src, HBITMAP* dest);
 //requires that dest is NULL to prevent overwriting existing bitmaps
 bool bitmapFromFile(LPCWSTR src, HBITMAP* dest);
 
-//saves the given bitmap to a file
-bool bitmapToFile(HBITMAP* src, LPCWSTR dest);
+//saves the given bitmap to a .bmp file of the given name.  if showPrompt is true, ask the user if they want
+//to see the file after it is saved.
+bool bitmapToFile(HBITMAP* src, LPCWSTR dest, bool showPrompt = false);
