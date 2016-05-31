@@ -24,7 +24,7 @@ RNG rng(GetTickCount()); //declared global to make sure it only gets seeded once
 		return sourceMat;
 	}
 
-	//convert it to grayscale.  required for later algorithms that dont use the color data anyway.  Also run a filter on it to reduce noise
+	//convert it to grayscale.  required for later algorithms that dont use the color data anyway.  Also run a blur filter on it to reduce noise
 	Mat sourceMatGray;
 	cvtColor(sourceMat, sourceMatGray, COLOR_BGR2GRAY);
 	blur(sourceMatGray, sourceMatGray, Size(3, 3));
@@ -38,7 +38,7 @@ RNG rng(GetTickCount()); //declared global to make sure it only gets seeded once
 	vector<Vec4i> hierarchy;
 	findContours(edgeDetectionOutput, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
 
-	//create a blank image adn draw each contour onto it using a random color
+	//create a blank image and draw each contour onto it using a random color
 	Mat finalResult = Mat::zeros(edgeDetectionOutput.size(), CV_8UC3);
 	for (int i = 0; i < contours.size(); i++)
 	{
@@ -62,7 +62,7 @@ RNG rng(GetTickCount()); //declared global to make sure it only gets seeded once
 //cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat imageToSearch, bool showKeypoints)
 //{
 //	
-//	//analyze images to find keypoint
+//	//analyze images to find keypoints
 //	Ptr<SURF> keypointDetector = SURF::Create(400); //create the keypoint detector.  the argument is the threshold used in keypoint detection.  
 //
 //}

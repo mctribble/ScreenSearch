@@ -27,10 +27,10 @@ class WindowEnumerator
 		std::vector<WindowData>* getWindowList() { return &windowList; }
 
 		//purges and repopulates the window list with all top-level windows.  Should be called prior to searching said list to ensure contents are accurate.
-		void topLevelWindowList();
+		void populateListWithTopWindows();
 
 		//like above, but finds all windows that are children of the given window
-		void childWindowList(HWND parentWindow);
+		void populateListWithChildWindows(HWND parentWindow);
 
 		//searches the current window list (NOT all windows!) for a window by this title.  Returns its handle if it exists and NULL if it does not.
 		HWND findWindowByTitle(LPCWSTR title);

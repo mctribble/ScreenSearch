@@ -1,6 +1,15 @@
 // ScreenSearch.cpp : Application entry point
 // ScreenSeach by Christopher Hake (mctribble)
 // locates various ojects in images either captured at runtime or imported from files
+// can also perform OCR with the assistance of tesseract
+
+// dependencies:
+// OpenCV 3.1.0 (http://opencv.org/downloads.html)
+// prompiled tesseract binaries (included in project, see tesseract-bin\readme.txt)
+// sample image files for test driver (included in project, see ScreenSearch\readme.txt)
+// windows 8.1 or windows 10
+// should be compatible with any compiler, but I used VS2015 community edition
+// project repo: https://github.com/mctribble/ScreenSearch
 
 #include <fcntl.h>
 #include "HBitmapUtils.h"
@@ -28,20 +37,19 @@ void contoursFromFile(char* inputFileName, int contourThreshold, double minSize,
 void contoursFromWindow(WindowData targetWindow, int contourThreshold, double minSize, char* outputFileName);
 void OCRWordCount(wchar_t* inputFileName, wstring searchString);
 
+//used as max length for arrays throughout the file
+const int ARG_ARRAY_LEN = 50;
+
 int main(int argc, wchar_t* argv[])
 {
 	//ensure wcout will actually support unicode (http://stackoverflow.com/a/19258509)
-	//WARNING: this seems to break cout, though there isnt much reason to use it anyway in a unicode app
+	//WARNING: this seems to break cout, though there isn't much reason to use it anyway in a unicode project such as this
 	_setmode(_fileno(stdout), _O_U16TEXT);
 
 	//init GDI+
 	GdiplusStartupInput gdiplusStartupInput;
 	ULONG_PTR           gdiplusToken;
 	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-
-	//used by various menu items
-	HWND targetWindow = NULL;
-	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//menu
 	int choice = -1;
@@ -108,16 +116,16 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"Which window?" << endl;
 				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
-				wchar_t fileName[20];
+				wchar_t fileName[ARG_ARRAY_LEN];
 				wcout << L"Name of new file?" << endl;
-				wcin.getline(fileName, 20);
+				wcin.getline(fileName, ARG_ARRAY_LEN);
 
 				saveWindowScreenshot(getWindowDataFromTitle(targetWindowTitle), fileName, true);
 				break;
 			}
 			case 6: //provide an image file and output another showing the contours
 			{
-				char inputFileName[20];	//name of the sample image
+				char inputFileName[ARG_ARRAY_LEN];	//name of the sample image
 				wcout << L"input file name?" << endl;
 				cin >> inputFileName;
 
@@ -129,7 +137,7 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"Minimum size? (larger values less sensitive)." << endl;
 				cin >> minSize;
 
-				char outputFileName[20];	//name of the output image
+				char outputFileName[ARG_ARRAY_LEN];	//name of the output image
 				wcout << L"output file name?" << endl;
 				cin >> outputFileName;
 
@@ -150,7 +158,7 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"Minimum size? (larger values less sensitive)." << endl;
 				cin >> minSize;
 
-				char outputFileName[20];	//name of the output image
+				char outputFileName[ARG_ARRAY_LEN];	//name of the output image
 				wcout << L"output file name?" << endl;
 				cin >> outputFileName;
 
@@ -160,13 +168,13 @@ int main(int argc, wchar_t* argv[])
 			case 8: //OCR
 			{
 				//input vars
-				wchar_t inputFileName[20];	//name of the target image
+				wchar_t inputFileName[ARG_ARRAY_LEN];	//name of the target image
 				wcout << L"Scan which image?" << endl;
-				wcin.getline(inputFileName, 20);
+				wcin.getline(inputFileName, ARG_ARRAY_LEN);
 				
-				wchar_t searchString[20];
+				wchar_t searchString[ARG_ARRAY_LEN];
 				wcout << L"What do you want to look for in the image?" << endl;
-				wcin.getline(searchString, 20);
+				wcin.getline(searchString, ARG_ARRAY_LEN);
 
 				OCRWordCount(inputFileName, searchString);
 				break;
@@ -242,7 +250,7 @@ void listTopWindows()
 	wcout << L"listing top-level windows" << endl;
 
 	//populate and fetch the list of open windows
-	WindowEnumerator::getInstance()->topLevelWindowList();
+	WindowEnumerator::getInstance()->populateListWithTopWindows();
 	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//print info of each
@@ -258,7 +266,7 @@ void listWindowChildren(WindowData targetWindow)
 	wcout << L"listing children of " << targetWindow.title << "." << endl;
 
 	//repopulate window list with children of the target window.
-	WindowEnumerator::getInstance()->childWindowList(targetWindow.handle);
+	WindowEnumerator::getInstance()->populateListWithChildWindows(targetWindow.handle);
 	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//print info of each
@@ -274,7 +282,7 @@ void highlightWindowChildren(WindowData targetWindow)
 	wcout << "Highlighting children of window: " << targetWindow.title << endl;
 
 	//repopulate window list with children of the target window.
-	WindowEnumerator::getInstance()->childWindowList(targetWindow.handle);
+	WindowEnumerator::getInstance()->populateListWithChildWindows(targetWindow.handle);
 	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//repeatedly draw highlights until escape is pressed
@@ -298,7 +306,7 @@ void highlightWindowChildren(WindowData targetWindow)
 WindowData getWindowDataFromTitle(wchar_t* targetWindowTitle)
 {
 	//populate window list
-	WindowEnumerator::getInstance()->topLevelWindowList();
+	WindowEnumerator::getInstance()->populateListWithTopWindows();
 
 	//find a window with matching title
 	HWND targetWindow = NULL;
@@ -390,9 +398,9 @@ void contoursFromWindow(WindowData targetWindow, int contourThreshold, double mi
 ////TEST 8: find sample object in sample image.  show how the match is done as well.
 //void test8(HWND targetWindow, vector<WindowData>* windowList)
 //{
-//	char	TEST8_IN_SAMPLE[25] = "homographySample.bmp";		//name of the sample object image
-//	char	TEST8_IN_SCENE[25] = "homographyScene.bmp";		//name of the sample image to search
-//	char	TEST8_OUT[20] = "test8.bmp";		//name of the output file image (char)
+//	char	TEST8_IN_SAMPLE[ARG_ARRAY_LEN] = "homographySample.bmp";		//name of the sample object image
+//	char	TEST8_IN_SCENE[ARG_ARRAY_LEN] = "homographyScene.bmp";		//name of the sample image to search
+//	char	TEST8_OUT[ARG_ARRAY_LEN] = "test8.bmp";		//name of the output file image (char)
 //
 //	wcout << L"finding the object depected in " << TEST8_IN_SAMPLE << L" in the image " << TEST8_IN_SCENE << L" and showing the match points.";
 //
@@ -434,14 +442,14 @@ void contoursFromWindow(WindowData targetWindow, int contourThreshold, double mi
 //run OCR on image and count occurrences of a string
 void OCRWordCount(wchar_t* inputFileName, wstring searchString)
 {
-	const wchar_t OCR_OUT[20] = L"OCR_Result"; //name of the output file, without extension (tesseract automatically saves to .txt, so including it in the argument causes problems)
-	const wchar_t OCR_OUT_WITH_EXTENSION[25] = L"OCR_Result.txt"; //same as above, but with the .txt.  keeping both as a constant saves string operations later
+	const wchar_t OCR_OUT[ARG_ARRAY_LEN] = L"OCR_Result"; //name of the output file, without extension (tesseract automatically saves to .txt, so including it in the argument causes problems)
+	const wchar_t OCR_OUT_WITH_EXTENSION[ARG_ARRAY_LEN] = L"OCR_Result.txt"; //same as above, but with the .txt.  keeping both as a constant saves string operations later
 
 	wcout << "Performing OCR to read all text in " << inputFileName << endl;
 
 	//compile args into one string
-	wchar_t tesseractArgs[40];
-	swprintf_s(tesseractArgs, 40, L"%s %s", inputFileName, OCR_OUT);
+	wchar_t tesseractArgs[ARG_ARRAY_LEN];
+	swprintf_s(tesseractArgs, ARG_ARRAY_LEN, L"%s %s", inputFileName, OCR_OUT);
 	wcout << L"running tesseract " << tesseractArgs << endl; 
 
 	//call external binary to perform OCR and wait for completeion

@@ -82,7 +82,7 @@ bool bitmapFromWindow(HWND src, HBITMAP* dest)
 
 	//copy data.  BitBlt() is the standard method, but this returned black for windows owned by other processes, so I use PrintWindow() instead.
 	//PrintWindow() is intended for use with printers, but works even if the window owned by another process and/or obscured by other windows. 
-	//hidden or minimized windows may not be captured properly. (TODO: work around this?)
+	//hidden or minimized windows may still not be captured properly.
 	//oddly, the PW_RENDERFULLCONTENT flag used here is not documented on MSDN, but it is referenced elsewhere.  it is required to properly capture some windows.
 	PrintWindow(src, capContext, PW_RENDERFULLCONTENT);
 

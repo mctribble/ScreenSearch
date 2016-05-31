@@ -7,6 +7,7 @@
 
 //loads an image from the given file, finds countours of the image, (http://docs.opencv.org/3.1.0/df/d0d/tutorial_find_contours.html#gsc.tab=0)
 //culls contours smaller than min_size, and then returns a Mat object that shows just the contours drawn in random colors
+//the threshold is used for edge detection.  smaller values find more edges and result in finding more contours
 cv::Mat findCountoursFromFile(char* src, int threshold, double min_size);
 
 //// <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>

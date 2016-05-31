@@ -13,7 +13,7 @@ BOOL CALLBACK addWindow(HWND hWnd, LPARAM lParam);
  *	I intentionally chose not to cull this list in case there is ever a reason to poll such things, but it is straightforward to cull this list.  
  *	See https://blogs.msdn.microsoft.com/oldnewthing/20071008-00/?p=24863/ and https://msdn.microsoft.com/en-us/library/windows/desktop/ms633530%28v=vs.85%29.aspx
  */
-void WindowEnumerator::topLevelWindowList()
+void WindowEnumerator::populateListWithTopWindows()
 {
 	//empty the list
 	windowList.clear();
@@ -23,7 +23,7 @@ void WindowEnumerator::topLevelWindowList()
 }
 
 //like above, but returns all windows that are children of the given window
-void WindowEnumerator::childWindowList(HWND parentWindow)
+void WindowEnumerator::populateListWithChildWindows(HWND parentWindow)
 {
 	//empty the list
 	windowList.clear();
@@ -46,7 +46,7 @@ HWND WindowEnumerator::findWindowByTitle(LPCWSTR title)
 	return result;
 }
 
-//adds hWnd to the window list.  Helper function for topLevelWindowList() and childWindowList() that windows calls once for each window
+//adds hWnd to the window list.  Helper function for populateListWithTopWindows() and populateListWithChildWindows() that windows calls once for each window
 BOOL CALLBACK addWindow(HWND hWnd, LPARAM lParam)
 {
 	WindowData newData; //create a struct for this window

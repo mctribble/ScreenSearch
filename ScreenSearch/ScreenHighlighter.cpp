@@ -39,6 +39,8 @@ void ScreenHighlighter::highlight(HWND hWnd)
 }
 
 //clears all highlights over the given window
+//this call is not strictly necessarry: highlights disappear as their screen region is redrawn by windows
+//it is just a way to cleanly get rid of them all at once 
 void ScreenHighlighter::clearWindowHighlights()
 {
 	//invalidate the screen to force a redraw.  This results in removing leftover highlighting.
