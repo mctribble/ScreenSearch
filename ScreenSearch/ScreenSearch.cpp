@@ -25,6 +25,7 @@ void test4(HWND targetWindow, vector<WindowData>* windowList);
 void test5(HWND targetWindow, vector<WindowData>* windowList);
 void test6(HWND targetWindow, vector<WindowData>* windowList);
 void test7(HWND targetWindow, vector<WindowData>* windowList);
+void test8(HWND targetWindow, vector<WindowData>* windowList);
 
 int main(int argc, wchar_t* argv[])
 {
@@ -349,13 +350,14 @@ void testDriver()
 	//tests.  each one prompts for input after.
 	//each test is self-contained so they can be commented out without affecting the others
 
-	test1(targetWindow, windowList); //TEST 1: List top-level windows
-	test2(targetWindow, windowList); //TEST 2: List children of Calculator Window
-	test3(targetWindow, windowList); //TEST 3: highlight children of Calculator window
-	test4(targetWindow, windowList); //TEST 4: save screencap of Calculator window
-	test5(targetWindow, windowList); //TEST 5: load the screencap from test 4 and save it in another format
-	test6(targetWindow, windowList); //TEST 6: find contours of a sample image
-	test7(targetWindow, windowList); //TEST 7: find contours of window screencap (much less sensitive than test 6, but does not cull as aggressively)
+	//test1(targetWindow, windowList); //TEST 1: List top-level windows
+	//test2(targetWindow, windowList); //TEST 2: List children of Calculator Window
+	//test3(targetWindow, windowList); //TEST 3: highlight children of Calculator window
+	//test4(targetWindow, windowList); //TEST 4: save screencap of Calculator window
+	//test5(targetWindow, windowList); //TEST 5: load the screencap from test 4 and save it in another format
+	//test6(targetWindow, windowList); //TEST 6: find contours of a sample image
+	//test7(targetWindow, windowList); //TEST 7: find contours of window screencap (much less sensitive than test 6, but does not cull as aggressively)
+	//test8(targetWindow, windowList); //TEST 8: find sample object in sample image  // <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>
 }
 
 //TEST 1: List top-level windows
@@ -653,3 +655,48 @@ void test7(HWND targetWindow, vector<WindowData>* windowList)
 	wcout << endl << "Press enter to continue." << endl;
 	cin.get();
 }
+
+//// <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>
+////TEST 8: find sample object in sample image.  show how the match is done as well.
+//void test8(HWND targetWindow, vector<WindowData>* windowList)
+//{
+//	char	TEST8_IN_SAMPLE[25] = "homographySample.bmp";		//name of the sample object image
+//	char	TEST8_IN_SCENE[25] = "homographyScene.bmp";		//name of the sample image to search
+//	char	TEST8_OUT[20] = "test8.bmp";		//name of the output file image (char)
+//
+//	wcout << L"finding the object depected in " << TEST8_IN_SAMPLE << L" in the image " << TEST8_IN_SCENE << L" and showing the match points.";
+//
+//	//the test is performed in grayscale
+//	cv::Mat sampleMat = cv::imread(TEST8_IN_SAMPLE, cv::IMREAD_GRAYSCALE);
+//	cv::Mat sceneMat = cv::imread(TEST8_IN_SCENE, cv::IMREAD_GRAYSCALE);
+//
+//	//validate materials
+//	if (!sampleMat.data || !sceneMat.data)
+//	{
+//		wcerr << L"Failed to load images!";
+//		return;
+//	}
+//
+//	//perform search
+//	cv::Mat result = findObjectInImage(sampleMat, sceneMat, true);
+//
+//	//save result to file
+//	cv::imwrite(TEST8_OUT, result);
+//
+//	//offer to show result to the user
+//	//ask user until they respond in a valid way or the input stream closes
+//	char response = '0';
+//	do
+//	{
+//		wcout << L"Saved file " << TEST8_OUT << L" to disk.  Would you like to open it? [y/n]" << endl;
+//		cin >> response;
+//	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+//
+//	//if yes, open file with the default program
+//	if (response == 'y' || response == 'Y')
+//		ShellExecuteA(0, 0, TEST8_OUT, 0, 0, SW_SHOW);
+//
+//	//prompt for keypress before continuing
+//	wcout << endl << "Press enter to continue." << endl;
+//	cin.get();
+//}
