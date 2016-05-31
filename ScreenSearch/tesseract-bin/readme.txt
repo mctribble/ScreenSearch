@@ -1,0 +1,1 @@
+these binaries compiled by @egorpugin.  retrieved from https://github.com/tesseract-ocr/tesseract/wiki/Downloads on 5/30/16
