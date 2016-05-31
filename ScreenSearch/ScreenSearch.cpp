@@ -19,15 +19,14 @@ using namespace Gdiplus;
 
 //predeclarations
 void testDriver();
-void test1(HWND targetWindow, vector<WindowData>* windowList);
-void test2(HWND targetWindow, vector<WindowData>* windowList);
-void test3(HWND targetWindow, vector<WindowData>* windowList);
-void test4(HWND targetWindow, vector<WindowData>* windowList);
-void test5(HWND targetWindow, vector<WindowData>* windowList);
-void test6(HWND targetWindow, vector<WindowData>* windowList);
-void test7(HWND targetWindow, vector<WindowData>* windowList);
-void test8(HWND targetWindow, vector<WindowData>* windowList);
-void test9(HWND targetWindow, vector<WindowData>* windowList);
+void listTopWindows();
+void listWindowChildren(WindowData targetWindow);
+void highlightWindowChildren(WindowData targetWindow);
+WindowData getWindowDataFromTitle(wchar_t* targetWindowTitle);
+void saveWindowScreenshot(WindowData targetWindow, wchar_t* fileName, bool showPrompt);
+void contoursFromFile(char* inputFileName, int contourThreshold, double minSize, char* outputFileName);
+void contoursFromWindow(WindowData targetWindow, int contourThreshold, double minSize, char* outputFileName);
+void OCRWordCount(wchar_t* inputFileName, wstring searchString);
 
 int main(int argc, wchar_t* argv[])
 {
@@ -74,14 +73,7 @@ int main(int argc, wchar_t* argv[])
 			}
 			case 1: //List top - level windows
 			{
-				//populate and fetch the list of open windows
-				WindowEnumerator::getInstance()->topLevelWindowList();
-
-				//print info of each
-				for (unsigned int i = 0; i < windowList->size(); i++)
-				{
-					wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
-				}
+				listTopWindows();
 				break;
 			}
 			case 2: //List child windows of a specific top - level window
@@ -90,55 +82,15 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"Which window?" << endl;
 				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
-				//populate the list of open windows 
-				WindowEnumerator::getInstance()->topLevelWindowList();
-
-				//find a window with matching title
-				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
-
-				//if a window was not found, prompt user and wait until it exists.
-				if (targetWindow == NULL)
-				{
-					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
-					break;
-				}
-
-				//we found the target window.  Enumerate its children and list them.
-				wcout << "Children of " << targetWindowTitle << ":" << endl;
-
-				//populate the list of children 
-				WindowEnumerator::getInstance()->childWindowList(targetWindow);
-
-				//print info of each
-				if (windowList->size() == 0)
-					wcout << "<none>" << endl;
-				for (unsigned int i = 0; i < windowList->size(); i++)
-				{
-					wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
-				}
-
+				listWindowChildren(getWindowDataFromTitle(targetWindowTitle));
 				break;
 			}
 			case 3: //highlight all windows(warning : this tends to flicker significantly)
 			{
-				//repopulate window list with children of the desktop window.  
-				WindowEnumerator::getInstance()->childWindowList(GetDesktopWindow());
-
-				//repeatedly draw highlights until escape is pressed
-				wcout << L"Highlighting windows.  Hold escape to clear highlights and continue." << endl;
-				while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
-				{
-					//draw a highlight for each child window
-					for (unsigned int i = 0; i < windowList->size(); i++)
-					{
-						ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
-					}
-
-					Sleep(10); //dont hog system resources to do nothing but draw rectangles over and over
-				}
-
-				//clear highlights
-				ScreenHighlighter::getInstance()->clearWindowHighlights();
+				WindowData desktop;
+				desktop.handle = GetDesktopWindow();
+				lstrcpy(desktop.title, L"Desktop");
+				highlightWindowChildren(desktop);
 				break;
 			}
 			case 4: //highlight child windows of a specific top - level window
@@ -147,38 +99,7 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"Which window?" << endl;
 				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
-				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
-				WindowEnumerator::getInstance()->topLevelWindowList();
-
-				//find a window with matching title
-				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
-
-				//if a window was not found, tell user and bail
-				if (targetWindow == NULL)
-				{
-					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
-					break;
-				}
-
-				//repopulate window list with children of the target window.  (note: commenting this out results in red boxes EVERYWHERE)
-				WindowEnumerator::getInstance()->childWindowList(targetWindow);
-
-				//repeatedly draw highlights until escape is pressed
-				wcout << "Highlighting child windows.  Hold escape to clear highlights and continue." << endl;
-				while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
-				{
-					//draw a highlight for each child window
-					for (unsigned int i = 0; i < windowList->size(); i++)
-					{
-						ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
-					}
-
-					Sleep(100); //dont hog system resources to do nothing but draw rectangles over and over
-				}
-
-				//clear highlights
-				ScreenHighlighter::getInstance()->clearWindowHighlights();
-
+				highlightWindowChildren(getWindowDataFromTitle(targetWindowTitle));
 				break;
 			}
 			case 5: //save screenshot of a specific top - level window
@@ -187,39 +108,11 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"Which window?" << endl;
 				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
-				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
-				WindowEnumerator::getInstance()->topLevelWindowList();
+				wchar_t fileName[20];
+				wcout << L"Name of new file?" << endl;
+				wcin.getline(fileName, 20);
 
-				//find a window with matching title
-				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
-
-				//if a window was not found, prompt user and wait until it exists.
-				if (targetWindow == NULL)
-				{
-					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
-					break;
-				}
-
-				//get screencap
-				HBITMAP screenshotBitmap = NULL;
-				if (bitmapFromWindow(targetWindow, &screenshotBitmap) == false)
-				{
-					wcout << "failed to perform screen capture!" << endl;
-					break;
-				}
-				else
-				{
-					//save it and offer to show the user
-					wchar_t fileName[20];
-					wcout << L"Name of new file?" << endl;
-					wcin.getline(fileName, 20);
-
-					bitmapToFile(&screenshotBitmap, fileName, true);
-				}
-
-				//cleanup
-				DeleteObject(screenshotBitmap);
-
+				saveWindowScreenshot(getWindowDataFromTitle(targetWindowTitle), fileName, true);
 				break;
 			}
 			case 6: //provide an image file and output another showing the contours
@@ -228,11 +121,11 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"input file name?" << endl;
 				cin >> inputFileName;
 
-				int		contourThreshold = 10;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
+				int		contourThreshold;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).
 				wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
 				cin >> contourThreshold;
 
-				double	minSize = 500.0; //culls contours smaller than this
+				double	minSize; //culls contours smaller than this
 				wcout << L"Minimum size? (larger values less sensitive)." << endl;
 				cin >> minSize;
 
@@ -240,25 +133,7 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"output file name?" << endl;
 				cin >> outputFileName;
 
-				//delegate to opencvutils
-				cv::Mat result = findCountoursFromFile(inputFileName, contourThreshold, minSize);
-
-				//save result to file
-				cv::imwrite(outputFileName, result);
-
-				//offer to show result to the user
-				//ask user until they respond in a valid way or the input stream closes
-				char response = '0';
-				do
-				{
-					wcout << "Saved file " << outputFileName << " to disk.  Would you like to open it? [y/n]" << endl;
-					cin >> response;
-				} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
-
-				//if yes, open file with the default program
-				if (response == 'y' || response == 'Y')
-					ShellExecuteA(0, 0, outputFileName, 0, 0, SW_SHOW);
-
+				contoursFromFile(inputFileName, contourThreshold, minSize, outputFileName);
 				break;
 			}
 			case 7: //output an image showing the contours of a given top - level window
@@ -267,11 +142,11 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"Which window?" << endl;
 				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
-				int		contourThreshold = 10;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
+				int		contourThreshold;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
 				wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
 				cin >> contourThreshold;
 
-				double	minSize = 500.0; //culls contours smaller than this
+				double	minSize; //culls contours smaller than this
 				wcout << L"Minimum size? (larger values less sensitive)." << endl;
 				cin >> minSize;
 
@@ -279,138 +154,21 @@ int main(int argc, wchar_t* argv[])
 				wcout << L"output file name?" << endl;
 				cin >> outputFileName;
 
-				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
-				WindowEnumerator::getInstance()->topLevelWindowList();
-
-				//find a window with matching title
-				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
-
-				//if a window was not found, prompt user and wait until it exists.
-				if (targetWindow == NULL)
-				{
-					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
-					break;
-				}
-
-				//get screencap
-				HBITMAP screenshotBitmap = NULL;
-				if (bitmapFromWindow(targetWindow, &screenshotBitmap) == false)
-				{
-					wcout << "failed to perform screen capture!" << endl;
-					break;
-				}
-				else
-				{
-					//silently save it to a temporary file
-					bitmapToFile(&screenshotBitmap, L"temp.bmp", false);
-
-					//use the temp. file as an input for contour detection
-					cv::Mat result = findCountoursFromFile("temp.bmp", contourThreshold, minSize);
-
-					//save result to file
-					cv::imwrite(outputFileName, result);
-
-					//delete our temp image
-					remove("temp.bmp");
-
-					//offer to show result to the user
-					//ask user until they respond in a valid way or the input stream closes
-					char response = '0';
-					do
-					{
-						wcout << "Saved file " << outputFileName << " to disk.  Would you like to open it? [y/n]" << endl;
-						cin >> response;
-					} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
-
-					//if yes, open file with the default program
-					if (response == 'y' || response == 'Y')
-						ShellExecuteA(0, 0, outputFileName, 0, 0, SW_SHOW);
-				}
-
-				//cleanup
-				DeleteObject(screenshotBitmap);
-
+				contoursFromWindow(getWindowDataFromTitle(targetWindowTitle), contourThreshold, minSize, outputFileName);
 				break;
 			}
 			case 8: //OCR
 			{
 				//input vars
-				wchar_t OCR_IN[20];	//name of the target image
+				wchar_t inputFileName[20];	//name of the target image
 				wcout << L"Scan which image?" << endl;
-				wcin.getline(OCR_IN, 20);
-				const wchar_t OCR_OUT[20] = L"OCR_Result"; //name of the output file, without extension (tesseract automatically saves to .txt, so including it in the argument causes problems)
-				const wchar_t OCR_OUT_WITH_EXTENSION[20] = L"OCR_Result.txt"; //same as above, but with the .txt.  keeping both as a constant saves string operations later
-
-				wcout << "Performing OCR to read all text in " << OCR_IN << endl;
-
-				//compile args into one string
-				wchar_t tesseractArgs[40];
-				swprintf_s(tesseractArgs, 40, L"%s %s", OCR_IN, OCR_OUT);
-				wcout << L"running tesseract " << tesseractArgs << endl;
-
-				//call external binary to perform OCR and wait for completeion
-
-				//setup paramaters
-				SHELLEXECUTEINFO ShExecInfo = { 0 };
-				ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-				ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-				ShExecInfo.hwnd = NULL;
-				ShExecInfo.lpVerb = L"open";
-				ShExecInfo.lpFile = L"tesseract-bin\\tesseract.exe";
-				ShExecInfo.lpParameters = tesseractArgs;
-				ShExecInfo.lpDirectory = NULL;
-				ShExecInfo.nShow = SW_SHOW;
-				ShExecInfo.hInstApp = NULL;
-
-				//run it
-				ShellExecuteEx(&ShExecInfo);
-
-				//wait for it
-				WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-
-				//open result as a UTF-8 file stream
-				FILE* file;
-				_wfopen_s(&file, OCR_OUT_WITH_EXTENSION, L"rt, ccs=UTF-8");
-				wifstream fileStream(file);
-
-				if (!fileStream)
-				{
-					wcerr << "Could not open OCR output file." << endl;
-					break;
-				}
-
-				//read file into a string
-				wstring OCROutput;
-				while (fileStream.eof() == false) {
-					const int LINE_BUFFER_SIZE = 200; //max number of characters that can be on one line
-					wchar_t buffer[LINE_BUFFER_SIZE];
-					fileStream.getline(buffer, LINE_BUFFER_SIZE);
-					OCROutput += buffer;
-					OCROutput += '\n'; //retain line breaks
-				}
-
-				//print it out for the user
-				wcout << L"OCR Results: " << endl << endl << OCROutput << endl;
-
-				//count ocurrences of a given word to make actual use of the data (based on https://www.rosettacode.org/wiki/Count_occurrences_of_a_substring#C.2B.2B)
+				wcin.getline(inputFileName, 20);
+				
 				wchar_t searchString[20];
-				wcout << L"What do you want to look for in the above text?" << endl;
+				wcout << L"What do you want to look for in the image?" << endl;
 				wcin.getline(searchString, 20);
 
-				int count = 0;
-				for (size_t searchPos = 0;															//current position in the string
-				searchPos != wstring::npos;															//keep going until we hit the end of the string
-					searchPos = OCROutput.find(searchString, searchPos + lstrlen(searchString)))	//each iteration, advance the search position to just after the next occurrence of the search string
-				{
-					count++;
-				}
-
-				wcout << searchString << L" appears " << count << L" times in the above text." << endl;
-
-				//prompt for keypress before continuing
-				wcout << endl << "Press enter to continue." << endl;
-				cin.get();
-				
+				OCRWordCount(inputFileName, searchString);
 				break;
 			}
 			case 9: //run the test driver
@@ -418,7 +176,12 @@ int main(int argc, wchar_t* argv[])
 				testDriver();
 				break;
 			}
-		}
+		} //end menu
+
+		//prompt for keypress before continuing
+		wcout << endl << "Press enter to continue." << endl;
+		cin.get();
+
 	}
 
 	//shut down GDI+
@@ -427,122 +190,92 @@ int main(int argc, wchar_t* argv[])
 	return 0;
 }
 
-//tests the system
+//tests the system by running all features with preset arguments
 void testDriver()
 {
-	//used by multiple tests in this driver.  
-	//each driver initializes them on their own to do what they need, so this is just to save allocations
-	HWND targetWindow = NULL;
-	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
+	wcout << L"Please create a window called \"Calculator\".  (tested with default win10 calculator, but should work on window by the same name)" << endl
+		<< L"Press enter when ready." << endl;
+	cin.get();
+	WindowData calcWindow = getWindowDataFromTitle(L"Calculator");
+	if (calcWindow.handle == NULL)
+	{
+		wcout << L"Window not found." << endl;
+		return;
+	}
 
-	//tests.  each one prompts for input after.
-	//each test is self-contained so they can be commented out without affecting the others
+	wcout << L"TEST 1: List Windows:" << endl;
+	listTopWindows();
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 
-	//test1(targetWindow, windowList); //TEST 1: List top-level windows
-	//test2(targetWindow, windowList); //TEST 2: List children of Calculator Window
-	//test3(targetWindow, windowList); //TEST 3: highlight children of Calculator window
-	//test4(targetWindow, windowList); //TEST 4: save screencap of Calculator window
-	//test5(targetWindow, windowList); //TEST 5: load the screencap from test 4 and save it in another format
-	//test6(targetWindow, windowList); //TEST 6: find contours of a sample image
-	//test7(targetWindow, windowList); //TEST 7: find contours of window screencap (much less sensitive than test 6, but does not cull as aggressively)
-	//test8(targetWindow, windowList); //TEST 8: find sample object in sample image  // <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>
-	test9(targetWindow, windowList); //TEST 9: perform OCR on sample image
+	wcout << L"TEST 2: List children of Calculator window:" << endl;
+	listWindowChildren(calcWindow);
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	wcout << L"TEST 3: Highlight Calculator child windows:" << endl;
+	highlightWindowChildren(calcWindow);
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	wcout << L"TEST 4: Save screenshot of Calculator window (test4.bmp):" << endl;
+	saveWindowScreenshot(calcWindow, L"test4.bmp", true);
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	wcout << L"TEST 5: use contoursFromFile to identify areas on the java test page (javaPageSample.bmp -> test5.png):" << endl;
+	contoursFromFile("javaPageSample.bmp", 10, 500.0, "test5.png");
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	wcout << L"TEST 6: perform OCR to count how many aardvarks are in aardvarkSample.png:" << endl;
+	OCRWordCount(L"aardvarkSample.png", L"aardvark");
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
+
+	wcout << L"Test driver complete." << endl;
 }
 
-//TEST 1: List top-level windows
-void test1(HWND targetWindow, vector<WindowData>* windowList)
+//List top-level windows to cout
+void listTopWindows()
 {
-	wcout << "TEST 1: fetch top level windows" << endl;
+	wcout << L"listing top-level windows" << endl;
 
 	//populate and fetch the list of open windows
-	WindowEnumerator::getInstance()->topLevelWindowList();//TEST 6: find contours of a sample image
+	WindowEnumerator::getInstance()->topLevelWindowList();
+	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//print info of each
 	for (unsigned int i = 0; i < windowList->size(); i++)
 	{
 		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
 	}
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
 }
 
-//TEST 2: List children of given window
-void test2(HWND targetWindow, vector<WindowData>* windowList)
+//List children of given top-level window to cout
+void listWindowChildren(WindowData targetWindow)
 {
-	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
-	wchar_t TEST2_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-	lstrcpy(TEST2_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
+	wcout << L"listing children of " << targetWindow.title << "." << endl;
 
-	wcout << endl << "TEST 2: find children of \"" << TEST2_TARGET_WINDOW_TITLE << "\" window, if it exists" << endl;
-
-	//populate the list of open windows 
-	WindowEnumerator::getInstance()->topLevelWindowList();
-
-	//find a window with matching title
-	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
-
-	//if a window was not found, prompt user and wait until it exists.
-	if (targetWindow == NULL)
-	{
-		wcout << "Could not find a window with title " << TEST2_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
-		while (targetWindow == NULL)
-		{
-			Sleep(1000);
-			WindowEnumerator::getInstance()->topLevelWindowList();
-			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST2_TARGET_WINDOW_TITLE);
-		}
-	}
-
-	//we found the target window.  Enumerate its children and list them.
-	wcout << "Children of " << TEST2_TARGET_WINDOW_TITLE << ":" << endl;
-
-	//populate the list of children (we dont have to retrieve it this time because we already have the pointer)
-	WindowEnumerator::getInstance()->childWindowList(targetWindow);
+	//repopulate window list with children of the target window.
+	WindowEnumerator::getInstance()->childWindowList(targetWindow.handle);
+	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//print info of each
-	if (windowList->size() == 0)
-		wcout << "<none>" << endl;
 	for (unsigned int i = 0; i < windowList->size(); i++)
 	{
 		wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
 	}
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
 }
 
-//TEST 3: highlight children of target window
-void test3(HWND targetWindow, vector<WindowData>* windowList)
+//highlight children of given window
+void highlightWindowChildren(WindowData targetWindow)
 {
-	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
-	wchar_t TEST3_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-	lstrcpy(TEST3_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title that has children
+	wcout << "Highlighting children of window: " << targetWindow.title << endl;
 
-	wcout << endl << "TEST 3: highlight children of \"" << TEST3_TARGET_WINDOW_TITLE << "\" window" << endl;
-
-	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
-	WindowEnumerator::getInstance()->topLevelWindowList();
-
-	//find a window with matching title
-	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST3_TARGET_WINDOW_TITLE);
-
-	//if a window was not found, prompt user and wait until it exists.
-	if (targetWindow == NULL)
-	{
-		wcout << "Could not find a window with title " << TEST3_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
-		while (targetWindow == NULL)
-		{
-			Sleep(1000);
-			WindowEnumerator::getInstance()->topLevelWindowList();
-			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST3_TARGET_WINDOW_TITLE);
-		}
-	}
-
-	//repopulate window list with children of the target window.  (note: commenting this out results in red boxes EVERYWHERE)
-	WindowEnumerator::getInstance()->childWindowList(targetWindow);
+	//repopulate window list with children of the target window.
+	WindowEnumerator::getInstance()->childWindowList(targetWindow.handle);
+	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
 
 	//repeatedly draw highlights until escape is pressed
 	wcout << "Highlighting child windows.  Hold escape to clear highlights and continue." << endl;
@@ -559,190 +292,98 @@ void test3(HWND targetWindow, vector<WindowData>* windowList)
 
 	//clear highlights
 	ScreenHighlighter::getInstance()->clearWindowHighlights();
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
 }
 
-//TEST 4: save screencap of a window
-void test4(HWND targetWindow, vector<WindowData>* windowList)
+//return WindowData of window with the given title.  if it is not found, the result has a null handle and a title of WindowNotFound
+WindowData getWindowDataFromTitle(wchar_t* targetWindowTitle)
 {
-	//declaring this way is a slight memory waste, but ensures the window title set here will actually fit the space alloted for titles in WindowData.
-	wchar_t TEST4_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-	lstrcpy(TEST4_TARGET_WINDOW_TITLE, L"Calculator"); //tested on Win10 Calculator app, but should work on anything with this title
-
-	wcout << endl << "TEST 4: capture screenshot of \"" << TEST4_TARGET_WINDOW_TITLE << "\" window and save it to a file" << endl;
-
-	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+	//populate window list
 	WindowEnumerator::getInstance()->topLevelWindowList();
 
 	//find a window with matching title
-	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST4_TARGET_WINDOW_TITLE);
+	HWND targetWindow = NULL;
+	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
+	WindowData result;
 
-	//if a window was not found, prompt user and wait until it exists.
+	//if the window was not found, tell user and bail
 	if (targetWindow == NULL)
 	{
-		wcout << "Could not find a window with title " << TEST4_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
-		while (targetWindow == NULL)
-		{
-			Sleep(1000);
-			WindowEnumerator::getInstance()->topLevelWindowList();
-			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST4_TARGET_WINDOW_TITLE);
-		}
+		wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
+		result.handle = NULL;
+		lstrcpy(result.title, L"WindowNotFound");
+		return result;
 	}
 
+	//we found the window.  populate data on it
+	result.handle = targetWindow;
+	DWORD titleFetchRes = GetWindowText(targetWindow, result.title, WindowData::MAX_TITLE_LENGTH); //get the window title
+	//error checking
+	if (titleFetchRes == 0)
+	{
+		//GetWindowText failed to give us a title.  put in a placeholder
+		lstrcpy(result.title, L"<untitled>");
+	}
+
+	return result;
+}
+
+//screencap target window and saves it in target file.  supports .bmp and .png.  if showPrompt is true, the user will be asked if they want to see the file
+void saveWindowScreenshot(WindowData targetWindow, wchar_t* fileName, bool showPrompt)
+{
+	wcout << endl << "capture screenshot of \"" << targetWindow.title << "\" window and save it to a file" << endl;
+
 	//get screencap
-	HBITMAP test4Bitmap = NULL;
-	if (bitmapFromWindow(targetWindow, &test4Bitmap) == false)
+	HBITMAP screenshotBitmap = NULL;
+	if (bitmapFromWindow(targetWindow.handle, &screenshotBitmap) == false)
 	{
 		wcout << "failed to perform screen capture!" << endl;
 	}
 	else
 	{
 		//save it and offer to show the user
-		bitmapToFile(&test4Bitmap, L"test4.bmp", true);
+		bitmapToFile(&screenshotBitmap, fileName, showPrompt);
 	}
 
 	//cleanup
-	DeleteObject(test4Bitmap);
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
+	DeleteObject(screenshotBitmap);
 }
 
-//TEST 5: load an image and save it as something else
-void test5(HWND targetWindow, vector<WindowData>* windowList)
+//find contours of an image file and highlights them, putting the result into another image
+void contoursFromFile(char* inputFileName, int contourThreshold, double minSize, char* outputFileName)
 {
-	//filenames for the test
-	wchar_t TEST5_IN[20] = L"test4.bmp";
-	wchar_t TEST5_OUT[20] = L"test5.png";
-
-	wcout << endl << "TEST 5: load " << TEST5_IN << " and save it to " << TEST5_OUT << endl;
-	HBITMAP test5Bitmap = NULL;
-	//load
-	if (bitmapFromFile(TEST5_IN, &test5Bitmap) == false)
-	{
-		wcout << "Load failed!" << endl;
-	}
-	else
-	{
-		//save and offer to show it to the user after
-		if (bitmapToFile(&test5Bitmap, TEST5_OUT, true) == false)
-		{
-			wcout << "Save failed!" << endl;
-		}
-	}
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-}
-
-//TEST 6: find contours of a sample image
-void test6(HWND targetWindow, vector<WindowData>* windowList)
-{
-	wcout << L"TEST 6: find contours of a sample image" << endl;
-
-	char			TEST6_IN[20] = "javaPageSample.bmp";	//name of the sample image
-	const int		TEST6_THRESHOLD = 10;					//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
-	const double	TEST6_MIN_SIZE = 500.0;					//culls contours smaller than this
-	char			TEST6_OUT[20] = "test6.bmp";			//name of the output file image (char)
+	wcout << L"finding contours of " << inputFileName << endl;
 
 	//delegate to opencvutils
-	cv::Mat result = findCountoursFromFile(TEST6_IN, TEST6_THRESHOLD, TEST6_MIN_SIZE);
-	
+	cv::Mat result = findCountoursFromFile(inputFileName, contourThreshold, minSize);
+
 	//save result to file
-	cv::imwrite(TEST6_OUT, result);
+	cv::imwrite(outputFileName, result);
 
 	//offer to show result to the user
 	//ask user until they respond in a valid way or the input stream closes
 	char response = '0';
 	do
 	{
-		wcout << "Saved file " << TEST6_OUT << " to disk.  Would you like to open it? [y/n]" << endl;
+		wcout << "Saved file " << outputFileName << " to disk.  Would you like to open it? [y/n]" << endl;
 		cin >> response;
 	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
 
 	//if yes, open file with the default program
 	if (response == 'y' || response == 'Y')
-		ShellExecuteA(0, 0, TEST6_OUT, 0, 0, SW_SHOW);
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
+		ShellExecuteA(0, 0, outputFileName, 0, 0, SW_SHOW);
 }
 
-//TEST 7: find contours of window screencap (much less sensitive than test 6, but does not cull as aggressively)
-void test7(HWND targetWindow, vector<WindowData>* windowList)
+//screencaps the window and passes it to contoursFromFile
+void contoursFromWindow(WindowData targetWindow, int contourThreshold, double minSize, char* outputFileName)
 {
-	wchar_t TEST7_TARGET_WINDOW_TITLE[WindowData::MAX_TITLE_LENGTH];
-	lstrcpy(TEST7_TARGET_WINDOW_TITLE, L"Calculator");		//tested on Win10 Calculator app, but should work on anything with this title
-	const int		TEST7_THRESHOLD = 50;					//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
-	const double	TEST7_MIN_SIZE = 50.0;					//culls contours smaller than this
-	char			TEST7_OUT[20] = "test7.bmp";			//name of the output file image (char)
+	//get screencap and save it to a temp file
+	saveWindowScreenshot(targetWindow, L"temp.bmp", false);
 
-	wcout << endl << "TEST 7: capture screenshot of \"" << TEST7_TARGET_WINDOW_TITLE << "\" window, search it for contours, and save the result to a file" << endl;
+	//get contours from it
+	contoursFromFile("temp.bmp", contourThreshold, minSize, outputFileName);
 
-	//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
-	WindowEnumerator::getInstance()->topLevelWindowList();
-
-	//find a window with matching title
-	targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST7_TARGET_WINDOW_TITLE);
-
-	//if a window was not found, prompt user and wait until it exists.
-	if (targetWindow == NULL)
-	{
-		wcout << "Could not find a window with title " << TEST7_TARGET_WINDOW_TITLE << ".  Please create one to continue." << endl;
-		while (targetWindow == NULL)
-		{
-			Sleep(1000);
-			WindowEnumerator::getInstance()->topLevelWindowList();
-			targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(TEST7_TARGET_WINDOW_TITLE);
-		}
-	}
-
-	//get screencap
-	HBITMAP test7Bitmap = NULL;
-	if (bitmapFromWindow(targetWindow, &test7Bitmap) == false)
-	{
-		wcout << "failed to perform screen capture!" << endl;
-	}
-	else
-	{
-		//silently save it to a temporary file
-		bitmapToFile(&test7Bitmap, L"temp.bmp", false);
-
-		//use the temp. file as an input for contour detection
-		cv::Mat result = findCountoursFromFile("temp.bmp", TEST7_THRESHOLD, TEST7_MIN_SIZE);
-
-		//save result to file
-		cv::imwrite(TEST7_OUT, result);
-
-		//delete our temp image
-		remove("temp.bmp");
-
-		//offer to show result to the user
-		//ask user until they respond in a valid way or the input stream closes
-		char response = '0';
-		do
-		{
-			wcout << "Saved file " << TEST7_OUT << " to disk.  Would you like to open it? [y/n]" << endl;
-			cin >> response;
-		} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
-
-		//if yes, open file with the default program
-		if (response == 'y' || response == 'Y')
-			ShellExecuteA(0, 0, TEST7_OUT, 0, 0, SW_SHOW);
-	}
-
-	//cleanup
-	DeleteObject(test7Bitmap);
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
+	//delete the temp file
+	remove("temp.bmp");
 }
 
 //// <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>
@@ -790,18 +431,17 @@ void test7(HWND targetWindow, vector<WindowData>* windowList)
 //	cin.get();
 //}
 
-//TEST 9: run OCR on sample image
-void test9(HWND targetWindow, vector<WindowData>* windowList)
+//run OCR on image and count occurrences of a string
+void OCRWordCount(wchar_t* inputFileName, wstring searchString)
 {
-	const wchar_t TEST9_IN[20] = L"aardvarkSample.png";	//name of the sample image
-	const wchar_t TEST9_OUT[20] = L"test9"; //name of the output file, without extension (tesseract automatically saves to .txt, so including it in the argument causes problems)
-	const wchar_t TEST9_OUT_WITH_EXTENSION[25] = L"test9.txt"; //same as above, but with the .txt.  keeping both as a constant saves string operations later
+	const wchar_t OCR_OUT[20] = L"OCR_Result"; //name of the output file, without extension (tesseract automatically saves to .txt, so including it in the argument causes problems)
+	const wchar_t OCR_OUT_WITH_EXTENSION[25] = L"OCR_Result.txt"; //same as above, but with the .txt.  keeping both as a constant saves string operations later
 
-	wcout << "Performing OCR to read all text in " << TEST9_IN << endl;
+	wcout << "Performing OCR to read all text in " << inputFileName << endl;
 
 	//compile args into one string
 	wchar_t tesseractArgs[40];
-	swprintf_s(tesseractArgs, 40, L"%s %s", TEST9_IN, TEST9_OUT);
+	swprintf_s(tesseractArgs, 40, L"%s %s", inputFileName, OCR_OUT);
 	wcout << L"running tesseract " << tesseractArgs << endl; 
 
 	//call external binary to perform OCR and wait for completeion
@@ -826,7 +466,7 @@ void test9(HWND targetWindow, vector<WindowData>* windowList)
 
 	//open result as a UTF-8 file stream
 	FILE* file;	
-	_wfopen_s(&file, TEST9_OUT_WITH_EXTENSION, L"rt, ccs=UTF-8");
+	_wfopen_s(&file, OCR_OUT_WITH_EXTENSION, L"rt, ccs=UTF-8");
 	wifstream fileStream(file);
 
 	if (!fileStream)
@@ -848,19 +488,14 @@ void test9(HWND targetWindow, vector<WindowData>* windowList)
 	//print it out for the user
 	wcout << L"OCR Results: " << endl << endl << OCROutput << endl;
 
-	//count ocurrences of the word "aardvark" to make actual use of the data (based on https://www.rosettacode.org/wiki/Count_occurrences_of_a_substring#C.2B.2B)
-	int aardvarks = 0;
-	wstring searchString = L"aardvark";
+	//count ocurrences of the search string to make actual use of the data (based on https://www.rosettacode.org/wiki/Count_occurrences_of_a_substring#C.2B.2B)
+	int count = 0;
 	for (size_t searchPos = 0;																//current position in the string
 		 searchPos != wstring::npos;													//keep going until we hit the end of the string
 		 searchPos = OCROutput.find(searchString, searchPos + searchString.length()))	//each iteration, advance the search position to just after the next occurrence of the search string
 	{
-		aardvarks++;
+		count++;
 	}
 
-	wcout << searchString << L" appears " << aardvarks << L" times in the above text." << endl;
-
-	//prompt for keypress before continuing
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
+	wcout << searchString << L" appears " << count << L" times in the above text." << endl;
 }
