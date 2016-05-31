@@ -37,7 +37,300 @@ int main(int argc, wchar_t* argv[])
 	ULONG_PTR           gdiplusToken;
 	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-	testDriver(); //for now, just run the test driver.  Later this will be a menu option
+	//used by various menu items
+	HWND targetWindow = NULL;
+	vector<WindowData>* windowList = WindowEnumerator::getInstance()->getWindowList();
+
+	//menu
+	int choice = -1;
+	while (choice != 0)
+	{
+		wcout << L"Welcome to Screensearch!" << endl << endl
+			<< L"0: quit" << endl
+			<< L"1: List top-level windows" << endl
+			<< L"2: List child windows of a specific top-level window" << endl
+			<< L"3: highlight all windows (warning: this flickers and lags significantly!)" << endl  //not really practical for anything.  I just had this happen as a bug and thought it would be funny to keep it as an option
+			<< L"4: highlight child windows of a specific top-level window" << endl
+			<< L"5: save screenshot of a specific top-level window" << endl
+			<< L"6: provide an image file and output another showing the contours" << endl
+			<< L"7: output an image showing the contours of a given top-level window" << endl
+			<< L"8: run the test driver" << endl;
+
+		cin.clear();
+		cin >> choice;
+
+
+		//perform chosen item
+		switch (choice)
+		{
+			case 0: //quit
+			{
+				wcout << L"goodbye." << endl;
+				break;
+			}
+			case 1: //List top - level windows
+			{
+				//populate and fetch the list of open windows
+				WindowEnumerator::getInstance()->topLevelWindowList();
+
+				//print info of each
+				for (unsigned int i = 0; i < windowList->size(); i++)
+				{
+					wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
+				}
+				break;
+			}
+			case 2: //List child windows of a specific top - level window
+			{
+				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+				wcout << L"Which window?" << endl;
+				wcin >> targetWindowTitle;
+
+				//populate the list of open windows 
+				WindowEnumerator::getInstance()->topLevelWindowList();
+
+				//find a window with matching title
+				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
+
+				//if a window was not found, prompt user and wait until it exists.
+				if (targetWindow == NULL)
+				{
+					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
+					break;
+				}
+
+				//we found the target window.  Enumerate its children and list them.
+				wcout << "Children of " << targetWindowTitle << ":" << endl;
+
+				//populate the list of children 
+				WindowEnumerator::getInstance()->childWindowList(targetWindow);
+
+				//print info of each
+				if (windowList->size() == 0)
+					wcout << "<none>" << endl;
+				for (unsigned int i = 0; i < windowList->size(); i++)
+				{
+					wcout << windowList->at(i).handle << ": " << windowList->at(i).title << endl;
+				}
+
+				break;
+			}
+			case 3: //highlight all windows(warning : this tends to flicker significantly)
+			{
+				//repopulate window list with children of the desktop window.  
+				WindowEnumerator::getInstance()->childWindowList(GetDesktopWindow());
+
+				//repeatedly draw highlights until escape is pressed
+				wcout << L"Highlighting windows.  Hold escape to clear highlights and continue." << endl;
+				while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
+				{
+					//draw a highlight for each child window
+					for (unsigned int i = 0; i < windowList->size(); i++)
+					{
+						ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
+					}
+
+					Sleep(10); //dont hog system resources to do nothing but draw rectangles over and over
+				}
+
+				//clear highlights
+				ScreenHighlighter::getInstance()->clearWindowHighlights();
+				break;
+			}
+			case 4: //highlight child windows of a specific top - level window
+			{
+				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+				wcout << L"Which window?" << endl;
+				wcin >> targetWindowTitle;
+
+				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+				WindowEnumerator::getInstance()->topLevelWindowList();
+
+				//find a window with matching title
+				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
+
+				//if a window was not found, tell user and bail
+				if (targetWindow == NULL)
+				{
+					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
+					break;
+				}
+
+				//repopulate window list with children of the target window.  (note: commenting this out results in red boxes EVERYWHERE)
+				WindowEnumerator::getInstance()->childWindowList(targetWindow);
+
+				//repeatedly draw highlights until escape is pressed
+				wcout << "Highlighting child windows.  Hold escape to clear highlights and continue." << endl;
+				while ((GetKeyState(VK_ESCAPE) & 0x80) == 0) //0x80 is the "high bit" of the key state, and indicates whether the key is pressed
+				{
+					//draw a highlight for each child window
+					for (unsigned int i = 0; i < windowList->size(); i++)
+					{
+						ScreenHighlighter::getInstance()->highlight(windowList->at(i).handle); //draw highlight over the window, if it is visible
+					}
+
+					Sleep(100); //dont hog system resources to do nothing but draw rectangles over and over
+				}
+
+				//clear highlights
+				ScreenHighlighter::getInstance()->clearWindowHighlights();
+
+				break;
+			}
+			case 5: //save screenshot of a specific top - level window
+			{
+				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+				wcout << L"Which window?" << endl;
+				wcin >> targetWindowTitle;
+
+				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+				WindowEnumerator::getInstance()->topLevelWindowList();
+
+				//find a window with matching title
+				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
+
+				//if a window was not found, prompt user and wait until it exists.
+				if (targetWindow == NULL)
+				{
+					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
+					break;
+				}
+
+				//get screencap
+				HBITMAP screenshotBitmap = NULL;
+				if (bitmapFromWindow(targetWindow, &screenshotBitmap) == false)
+				{
+					wcout << "failed to perform screen capture!" << endl;
+					break;
+				}
+				else
+				{
+					//save it and offer to show the user
+					bitmapToFile(&screenshotBitmap, L"test4.bmp", true);
+				}
+
+				//cleanup
+				DeleteObject(screenshotBitmap);
+
+				break;
+			}
+			case 6: //provide an image file and output another showing the contours
+			{
+				char inputFileName[20];	//name of the sample image
+				wcout << L"input file name?" << endl;
+				cin >> inputFileName;
+
+				int		contourThreshold = 10;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
+				wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
+				cin >> contourThreshold;
+
+				double	minSize = 500.0; //culls contours smaller than this
+				wcout << L"Minimum size? (larger values less sensitive)." << endl;
+				cin >> minSize;
+
+				char outputFileName[20];	//name of the output image
+				wcout << L"output file name?" << endl;
+				cin >> outputFileName;
+
+				//delegate to opencvutils
+				cv::Mat result = findCountoursFromFile(inputFileName, contourThreshold, minSize);
+
+				//save result to file
+				cv::imwrite(outputFileName, result);
+
+				//offer to show result to the user
+				//ask user until they respond in a valid way or the input stream closes
+				char response = '0';
+				do
+				{
+					wcout << "Saved file " << outputFileName << " to disk.  Would you like to open it? [y/n]" << endl;
+					cin >> response;
+				} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+				//if yes, open file with the default program
+				if (response == 'y' || response == 'Y')
+					ShellExecuteA(0, 0, outputFileName, 0, 0, SW_SHOW);
+
+				break;
+			}
+			case 7: //output an image showing the contours of a given top - level window
+			{
+				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+				wcout << L"Which window?" << endl;
+				wcin >> targetWindowTitle;
+
+				int		contourThreshold = 10;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
+				wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
+				cin >> contourThreshold;
+
+				double	minSize = 500.0; //culls contours smaller than this
+				wcout << L"Minimum size? (larger values less sensitive)." << endl;
+				cin >> minSize;
+
+				char outputFileName[20];	//name of the output image
+				wcout << L"output file name?" << endl;
+				cin >> outputFileName;
+
+				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
+				WindowEnumerator::getInstance()->topLevelWindowList();
+
+				//find a window with matching title
+				targetWindow = WindowEnumerator::getInstance()->findWindowByTitle(targetWindowTitle);
+
+				//if a window was not found, prompt user and wait until it exists.
+				if (targetWindow == NULL)
+				{
+					wcout << "Could not find a window with title " << targetWindowTitle << "." << endl;
+					break;
+				}
+
+				//get screencap
+				HBITMAP screenshotBitmap = NULL;
+				if (bitmapFromWindow(targetWindow, &screenshotBitmap) == false)
+				{
+					wcout << "failed to perform screen capture!" << endl;
+					break;
+				}
+				else
+				{
+					//silently save it to a temporary file
+					bitmapToFile(&screenshotBitmap, L"temp.bmp", false);
+
+					//use the temp. file as an input for contour detection
+					cv::Mat result = findCountoursFromFile("temp.bmp", contourThreshold, minSize);
+
+					//save result to file
+					cv::imwrite(outputFileName, result);
+
+					//delete our temp image
+					remove("temp.bmp");
+
+					//offer to show result to the user
+					//ask user until they respond in a valid way or the input stream closes
+					char response = '0';
+					do
+					{
+						wcout << "Saved file " << outputFileName << " to disk.  Would you like to open it? [y/n]" << endl;
+						cin >> response;
+					} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+					//if yes, open file with the default program
+					if (response == 'y' || response == 'Y')
+						ShellExecuteA(0, 0, outputFileName, 0, 0, SW_SHOW);
+				}
+
+				//cleanup
+				DeleteObject(screenshotBitmap);
+
+				break;
+			}
+			case 8: //run the test driver
+			{
+				testDriver();
+				break;
+			}
+		}
+	}
 
 	//shut down GDI+
 	GdiplusShutdown(gdiplusToken);
