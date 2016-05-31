@@ -26,6 +26,7 @@ void test5(HWND targetWindow, vector<WindowData>* windowList);
 void test6(HWND targetWindow, vector<WindowData>* windowList);
 void test7(HWND targetWindow, vector<WindowData>* windowList);
 void test8(HWND targetWindow, vector<WindowData>* windowList);
+void test9(HWND targetWindow, vector<WindowData>* windowList);
 
 int main(int argc, wchar_t* argv[])
 {
@@ -59,7 +60,7 @@ int main(int argc, wchar_t* argv[])
 
 		cin.clear();
 		cin >> choice;
-
+		cin.get(); //clear newline
 
 		//perform chosen item
 		switch (choice)
@@ -85,7 +86,7 @@ int main(int argc, wchar_t* argv[])
 			{
 				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
 				wcout << L"Which window?" << endl;
-				wcin >> targetWindowTitle;
+				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
 				//populate the list of open windows 
 				WindowEnumerator::getInstance()->topLevelWindowList();
@@ -142,7 +143,7 @@ int main(int argc, wchar_t* argv[])
 			{
 				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
 				wcout << L"Which window?" << endl;
-				wcin >> targetWindowTitle;
+				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
 				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
 				WindowEnumerator::getInstance()->topLevelWindowList();
@@ -182,7 +183,7 @@ int main(int argc, wchar_t* argv[])
 			{
 				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
 				wcout << L"Which window?" << endl;
-				wcin >> targetWindowTitle;
+				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
 				//populate the list of open windows (we dont have to retrieve it this time because we already have the pointer)
 				WindowEnumerator::getInstance()->topLevelWindowList();
@@ -207,7 +208,11 @@ int main(int argc, wchar_t* argv[])
 				else
 				{
 					//save it and offer to show the user
-					bitmapToFile(&screenshotBitmap, L"test4.bmp", true);
+					wchar_t fileName[20];
+					wcout << L"Name of new file?" << endl;
+					wcin.getline(fileName, 20);
+
+					bitmapToFile(&screenshotBitmap, fileName, true);
 				}
 
 				//cleanup
@@ -258,7 +263,7 @@ int main(int argc, wchar_t* argv[])
 			{
 				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
 				wcout << L"Which window?" << endl;
-				wcin >> targetWindowTitle;
+				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
 
 				int		contourThreshold = 10;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
 				wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
@@ -358,6 +363,7 @@ void testDriver()
 	//test6(targetWindow, windowList); //TEST 6: find contours of a sample image
 	//test7(targetWindow, windowList); //TEST 7: find contours of window screencap (much less sensitive than test 6, but does not cull as aggressively)
 	//test8(targetWindow, windowList); //TEST 8: find sample object in sample image  // <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>
+	test9(targetWindow, windowList); //TEST 9: perform OCR on sample image
 }
 
 //TEST 1: List top-level windows
@@ -700,3 +706,14 @@ void test7(HWND targetWindow, vector<WindowData>* windowList)
 //	wcout << endl << "Press enter to continue." << endl;
 //	cin.get();
 //}
+
+//TEST 9: run OCR on sample image
+void test9(HWND targetWindow, vector<WindowData>* windowList)
+{
+	char TEST9_IN[20] = "javaPageSample2.bmp";	//name of the sample image
+
+	wcout << "Performing OCR to read all text in " << TEST9_IN << endl;
+
+	//call external binary to perform OCR
+
+}
