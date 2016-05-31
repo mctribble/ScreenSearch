@@ -43,6 +43,8 @@ local.properties
 ScreenSearch.VC.opendb
 ScreenSearch/test*.bmp
 ScreenSearch/test*.png
+ScreenSearch/test9.txt
+ScreenSearch/OCR_Result.txt
 
 # Build results
 

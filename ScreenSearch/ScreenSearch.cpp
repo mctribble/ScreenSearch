@@ -6,6 +6,7 @@
 #include "HBitmapUtils.h"
 #include <iostream>
 #include <io.h>
+#include <fstream>
 #include "windowEnumerator.h"
 #include "ScreenHighlighter.h"
 #include <gdiplus.h>
@@ -56,7 +57,8 @@ int main(int argc, wchar_t* argv[])
 			<< L"5: save screenshot of a specific top-level window" << endl
 			<< L"6: provide an image file and output another showing the contours" << endl
 			<< L"7: output an image showing the contours of a given top-level window" << endl
-			<< L"8: run the test driver" << endl;
+			<< L"8: perform OCR on an image, count ocurrences of a string, and show full text alongside word count" << endl
+			<< L"9: run the test driver" << endl;
 
 		cin.clear();
 		cin >> choice;
@@ -330,7 +332,88 @@ int main(int argc, wchar_t* argv[])
 
 				break;
 			}
-			case 8: //run the test driver
+			case 8: //OCR
+			{
+				//input vars
+				wchar_t OCR_IN[20];	//name of the target image
+				wcout << L"Scan which image?" << endl;
+				wcin.getline(OCR_IN, 20);
+				const wchar_t OCR_OUT[20] = L"OCR_Result"; //name of the output file, without extension (tesseract automatically saves to .txt, so including it in the argument causes problems)
+				const wchar_t OCR_OUT_WITH_EXTENSION[20] = L"OCR_Result.txt"; //same as above, but with the .txt.  keeping both as a constant saves string operations later
+
+				wcout << "Performing OCR to read all text in " << OCR_IN << endl;
+
+				//compile args into one string
+				wchar_t tesseractArgs[40];
+				swprintf_s(tesseractArgs, 40, L"%s %s", OCR_IN, OCR_OUT);
+				wcout << L"running tesseract " << tesseractArgs << endl;
+
+				//call external binary to perform OCR and wait for completeion
+
+				//setup paramaters
+				SHELLEXECUTEINFO ShExecInfo = { 0 };
+				ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+				ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+				ShExecInfo.hwnd = NULL;
+				ShExecInfo.lpVerb = L"open";
+				ShExecInfo.lpFile = L"tesseract-bin\\tesseract.exe";
+				ShExecInfo.lpParameters = tesseractArgs;
+				ShExecInfo.lpDirectory = NULL;
+				ShExecInfo.nShow = SW_SHOW;
+				ShExecInfo.hInstApp = NULL;
+
+				//run it
+				ShellExecuteEx(&ShExecInfo);
+
+				//wait for it
+				WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+
+				//open result as a UTF-8 file stream
+				FILE* file;
+				_wfopen_s(&file, OCR_OUT_WITH_EXTENSION, L"rt, ccs=UTF-8");
+				wifstream fileStream(file);
+
+				if (!fileStream)
+				{
+					wcerr << "Could not open OCR output file." << endl;
+					break;
+				}
+
+				//read file into a string
+				wstring OCROutput;
+				while (fileStream.eof() == false) {
+					const int LINE_BUFFER_SIZE = 200; //max number of characters that can be on one line
+					wchar_t buffer[LINE_BUFFER_SIZE];
+					fileStream.getline(buffer, LINE_BUFFER_SIZE);
+					OCROutput += buffer;
+					OCROutput += '\n'; //retain line breaks
+				}
+
+				//print it out for the user
+				wcout << L"OCR Results: " << endl << endl << OCROutput << endl;
+
+				//count ocurrences of a given word to make actual use of the data (based on https://www.rosettacode.org/wiki/Count_occurrences_of_a_substring#C.2B.2B)
+				wchar_t searchString[20];
+				wcout << L"What do you want to look for in the above text?" << endl;
+				wcin.getline(searchString, 20);
+
+				int count = 0;
+				for (size_t searchPos = 0;															//current position in the string
+				searchPos != wstring::npos;															//keep going until we hit the end of the string
+					searchPos = OCROutput.find(searchString, searchPos + lstrlen(searchString)))	//each iteration, advance the search position to just after the next occurrence of the search string
+				{
+					count++;
+				}
+
+				wcout << searchString << L" appears " << count << L" times in the above text." << endl;
+
+				//prompt for keypress before continuing
+				wcout << endl << "Press enter to continue." << endl;
+				cin.get();
+				
+				break;
+			}
+			case 9: //run the test driver
 			{
 				testDriver();
 				break;
@@ -710,10 +793,74 @@ void test7(HWND targetWindow, vector<WindowData>* windowList)
 //TEST 9: run OCR on sample image
 void test9(HWND targetWindow, vector<WindowData>* windowList)
 {
-	char TEST9_IN[20] = "javaPageSample2.bmp";	//name of the sample image
+	const wchar_t TEST9_IN[20] = L"aardvarkSample.png";	//name of the sample image
+	const wchar_t TEST9_OUT[20] = L"test9"; //name of the output file, without extension (tesseract automatically saves to .txt, so including it in the argument causes problems)
+	const wchar_t TEST9_OUT_WITH_EXTENSION[25] = L"test9.txt"; //same as above, but with the .txt.  keeping both as a constant saves string operations later
 
 	wcout << "Performing OCR to read all text in " << TEST9_IN << endl;
 
-	//call external binary to perform OCR
+	//compile args into one string
+	wchar_t tesseractArgs[40];
+	swprintf_s(tesseractArgs, 40, L"%s %s", TEST9_IN, TEST9_OUT);
+	wcout << L"running tesseract " << tesseractArgs << endl; 
 
+	//call external binary to perform OCR and wait for completeion
+	
+	//setup paramaters
+	SHELLEXECUTEINFO ShExecInfo = { 0 };
+	ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+	ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+	ShExecInfo.hwnd = NULL;
+	ShExecInfo.lpVerb = L"open";
+	ShExecInfo.lpFile = L"tesseract-bin\\tesseract.exe";
+	ShExecInfo.lpParameters = tesseractArgs;
+	ShExecInfo.lpDirectory = NULL;
+	ShExecInfo.nShow = SW_SHOW;
+	ShExecInfo.hInstApp = NULL;
+	
+	//run it
+	ShellExecuteEx(&ShExecInfo);
+
+	//wait for it
+	WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+
+	//open result as a UTF-8 file stream
+	FILE* file;	
+	_wfopen_s(&file, TEST9_OUT_WITH_EXTENSION, L"rt, ccs=UTF-8");
+	wifstream fileStream(file);
+
+	if (!fileStream)
+	{
+		wcerr << "Could not open OCR output file." << endl;
+		return;
+	}
+
+	//read file into a string
+	wstring OCROutput;
+	while (fileStream.eof() == false) {
+		const int LINE_BUFFER_SIZE = 200; //max number of characters that can be on one line
+		wchar_t buffer[LINE_BUFFER_SIZE];
+		fileStream.getline(buffer, LINE_BUFFER_SIZE);
+		OCROutput += buffer;
+		OCROutput += '\n'; //retain line breaks
+	}
+
+	//print it out for the user
+	wcout << L"OCR Results: " << endl << endl << OCROutput << endl;
+
+	//count ocurrences of the word "aardvark" to make actual use of the data (based on https://www.rosettacode.org/wiki/Count_occurrences_of_a_substring#C.2B.2B)
+	int aardvarks = 0;
+	wstring searchString = L"aardvark";
+	for (size_t searchPos = 0;																//current position in the string
+		 searchPos != wstring::npos;													//keep going until we hit the end of the string
+		 searchPos = OCROutput.find(searchString, searchPos + searchString.length()))	//each iteration, advance the search position to just after the next occurrence of the search string
+	{
+		aardvarks++;
+	}
+
+	wcout << searchString << L" appears " << aardvarks << L" times in the above text." << endl;
+
+	//prompt for keypress before continuing
+	wcout << endl << "Press enter to continue." << endl;
+	cin.get();
 }

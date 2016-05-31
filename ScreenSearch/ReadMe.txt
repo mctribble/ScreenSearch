@@ -1,40 +1,5 @@
-========================================================================
-    CONSOLE APPLICATION : ScreenSearch Project Overview
-========================================================================
+image samples are screenshots of webpages
 
-AppWizard has created this ScreenSearch application for you.
+javaPageSample is a screencap of http://www.java.com/en/download/installed8.jsp, taken with screenSearch itself
 
-This file contains a summary of what you will find in each of the files that
-make up your ScreenSearch application.
-
-
-ScreenSearch.vcxproj
-    This is the main project file for VC++ projects generated using an Application Wizard.
-    It contains information about the version of Visual C++ that generated the file, and
-    information about the platforms, configurations, and project features selected with the
-    Application Wizard.
-
-ScreenSearch.vcxproj.filters
-    This is the filters file for VC++ projects generated using an Application Wizard. 
-    It contains information about the association between the files in your project 
-    and the filters. This association is used in the IDE to show grouping of files with
-    similar extensions under a specific node (for e.g. ".cpp" files are associated with the
-    "Source Files" filter).
-
-ScreenSearch.cpp
-    This is the main application source file.
-
-/////////////////////////////////////////////////////////////////////////////
-Other standard files:
-
-StdAfx.h, StdAfx.cpp
-    These files are used to build a precompiled header (PCH) file
-    named ScreenSearch.pch and a precompiled types file named StdAfx.obj.
-
-/////////////////////////////////////////////////////////////////////////////
-Other notes:
-
-AppWizard uses "TODO:" comments to indicate parts of the source code you
-should add to or customize.
-
-/////////////////////////////////////////////////////////////////////////////
+aardvarkSample is a screencap of https://en.wikipedia.org/wiki/Aardvark#Description that was cropped to include just the "description" section.
