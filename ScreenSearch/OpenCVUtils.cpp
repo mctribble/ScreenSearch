@@ -14,13 +14,12 @@ RNG rng(GetTickCount()); //declared global to make sure it only gets seeded once
 
 //loads an image from the given file, finds countours of the image, (http://docs.opencv.org/3.1.0/df/d0d/tutorial_find_contours.html#gsc.tab=0)
 //culls contours smaller than min_size, and then returns a Mat object that shows just the contours drawn in random colors
-::Mat findCountoursFromFile(char* src, int threshold, double min_size)
+::Mat findCountoursFromFile(Mat sourceMat, int threshold, double min_size)
 {
-	//load the source image
-	Mat sourceMat = imread(src);
+	//validate input
 	if (sourceMat.empty())
 	{
-		wcerr << L"image load failed." << endl;
+		wcerr << L"input image is empty!." << endl;
 		return sourceMat;
 	}
 
@@ -53,16 +52,129 @@ RNG rng(GetTickCount()); //declared global to make sure it only gets seeded once
 	return finalResult;
 }
 
-// <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>
-////takes two images: the first is a sample image containing just the object to be located.  The second is a scene containing said object.
-////this algorithm then finds the object in the first image in the second image and highlights it
-////if showKeypoints is set, the resulting image contains both original images with lines drawn tos how the match
-////based heavily on this tutorial: http://docs.opencv.org/3.1.0/d7/dff/tutorial_feature_homography.html#gsc.tab=0
-////note that the test is performed in grayscale.
-//cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat imageToSearch, bool showKeypoints)
-//{
-//	
-//	//analyze images to find keypoints
-//	Ptr<SURF> keypointDetector = SURF::Create(400); //create the keypoint detector.  the argument is the threshold used in keypoint detection.  
-//
-//}
+//takes two images: the first is a sample image containing just the object to be located.  The second is a scene containing said object.
+//this algorithm then finds the object in the first image in the second image and highlights it
+//if showMatchData is set, the resulting image contains both original images with lines drawn to show the match
+//based heavily on this tutorial: http://docs.opencv.org/3.1.0/d7/dff/tutorial_feature_homography.html#gsc.tab=0
+//the test is performed in grayscale, so his function expects the parameters to be grayscale
+cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool showMatchData)
+{
+	//validate input
+	if (objectSampleImage.empty() || sceneToSearch.empty())
+	{
+		wcerr << L"input image is empty!." << endl;
+		return Mat();
+	}
+
+	//two different keypoint algorithms.  KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
+	Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
+	//Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+
+	//keypoint detection and description data
+	vector<KeyPoint>	allObjectKeypoints;	//keypoints found in the object sample image
+	vector<KeyPoint>	allSceneKeypoints;	//keypoints found in the image being searched
+	Mat					objectDescriptors;	//describes keypoints found in the object sample image
+	Mat					sceneDescriptors;	//describes keypoints found in the image being searched
+
+	//perform keypoint detection
+	keypointDetector->detectAndCompute(objectSampleImage, Mat(), allObjectKeypoints, objectDescriptors);
+	keypointDetector->detectAndCompute(sceneToSearch, Mat(), allSceneKeypoints, sceneDescriptors);
+
+	//ensure descriptors are in CV_32F format, which is what FLANN requires
+	if(objectDescriptors.type() != CV_32F) 
+		objectDescriptors.convertTo(objectDescriptors, CV_32F);
+	if(sceneDescriptors.type() != CV_32F)
+		sceneDescriptors.convertTo(sceneDescriptors, CV_32F);
+
+	//find keypoint matches between the two images using FLANN (http://docs.opencv.org/3.1.0/dc/de2/classcv_1_1FlannBasedMatcher.html#gsc.tab=0)
+	FlannBasedMatcher keypointMatcher;
+	vector<DMatch> allKeypointMatches;
+	keypointMatcher.match(objectDescriptors, sceneDescriptors, allKeypointMatches);
+
+	//find the minimum distance between any two matched keypoints
+	double minMatchDistance = 100; //it is important this is 100-ish and not DBL_MAX to specify a minimum precision for "close" matches (see below)
+	for (int i = 0; i < objectDescriptors.rows; i++)
+	{
+		double curDist = allKeypointMatches[i].distance;
+		if (curDist < minMatchDistance)
+			minMatchDistance = curDist;
+	}
+
+	//reduce errors by only working with matches that are relatively close to the minimum match distance (minMatchDistance*3)
+	vector<DMatch> closeKeypointMatches;
+	for (int i = 0; i < objectDescriptors.rows; i++)
+		if (allKeypointMatches[i].distance < (minMatchDistance * 3.0))
+			closeKeypointMatches.push_back(allKeypointMatches[i]);
+
+	//grab the keypoints from those close matches
+	vector<Point2f> closeObjectKeypoints;
+	vector<Point2f> closeSceneKeypoints;
+	for (int i = 0; i < closeKeypointMatches.size(); i++)
+	{
+		closeObjectKeypoints.push_back( allObjectKeypoints[ closeKeypointMatches[i].queryIdx ].pt );
+		closeSceneKeypoints.push_back(  allSceneKeypoints[  closeKeypointMatches[i].trainIdx ].pt );
+	}
+
+	//find the transformation between keypoints on the object and their matches in the scene
+	Mat homography = findHomography(closeObjectKeypoints, closeSceneKeypoints, RANSAC);
+
+	//take the corners of the object image and transform them to the scene image to locate the object
+	vector<Point2f> objectCorners(4);
+	vector<Point2f> sceneCorners(4);
+	objectCorners[0] = cvPoint(0, 0);
+	objectCorners[1] = cvPoint(objectSampleImage.cols, 0);
+	objectCorners[2] = cvPoint(objectSampleImage.cols, objectSampleImage.rows);
+	objectCorners[3] = cvPoint(0, objectSampleImage.rows);
+	perspectiveTransform(objectCorners, sceneCorners, homography);
+	
+	//create a new image to use as our output that supports color
+	Mat result = Mat(sceneToSearch.size(), CV_8UC3);
+	cvtColor(sceneToSearch, result, CV_GRAY2BGR); //uses BGR instead of RGB because that is the default in openCV
+
+	//regardless of showPrompt, we want the object to be highlighted in the scene.  We draw this outline first:
+	line(result, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 4);
+	line(result, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 4);
+	line(result, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 4);
+	line(result, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 4);
+	
+	//now that the object is highlighted, we have finished our main job.  Return now if we don't need to show the matches
+	if (showMatchData == false)
+		return result;
+
+	//we want the match data also.  Call drawMatches to do the heavy lifting.
+	Mat resultWithMatchData;
+	drawMatches(objectSampleImage, allObjectKeypoints,		//object data
+				result, allSceneKeypoints,					//scene data
+				closeKeypointMatches,						//match data
+				resultWithMatchData,						//where to put it
+				Scalar::all(-1), Scalar::all(-1),			//use random colors
+				std::vector<char>(),						//empty mask
+				DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);	//hide points that didnt match anything
+
+	//and return it
+	return resultWithMatchData;
+}
+
+//saves the given Mat to a file of the given name.  if showPrompt is true, ask the user if they want
+//to see the file after it is saved.  If yes, it is opened with the system default application
+bool matToFile(cv::Mat src, LPCSTR fileName, bool showPrompt)
+{
+	//save result to file
+	if (cv::imwrite(fileName, src) == false)
+		return false; //file save failed
+
+	//offer to show result to the user
+	//ask user until they respond in a valid way or the input stream closes
+	char response = '0';
+	do
+	{
+		wcout << "Saved file " << fileName << " to disk.  Would you like to open it? [y/n]" << endl;
+		cin >> response;
+	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+	//if yes, open file with the default program
+	if (response == 'y' || response == 'Y')
+		ShellExecuteA(0, 0, fileName, 0, 0, SW_SHOW);
+
+	return true;
+}

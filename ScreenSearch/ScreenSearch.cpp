@@ -211,35 +211,40 @@ void testDriver()
 		return;
 	}
 
-	wcout << L"TEST 1: List Windows:" << endl;
-	listTopWindows();
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
+	//wcout << L"TEST 1: List Windows:" << endl;
+	//listTopWindows();
+	//wcout << endl << L"Press enter to continue." << endl;
+	//cin.get();
+	//
+	//wcout << L"TEST 2: List children of Calculator window:" << endl;
+	//listWindowChildren(calcWindow);
+	//wcout << endl << L"Press enter to continue." << endl;
+	//cin.get();
+	//
+	//wcout << L"TEST 3: Highlight Calculator child windows:" << endl;
+	//highlightWindowChildren(calcWindow);
+	//wcout << endl << L"Press enter to continue." << endl;
+	//cin.get();
+	//
+	//wcout << L"TEST 4: Save screenshot of Calculator window (test4.bmp):" << endl;
+	//saveWindowScreenshot(calcWindow, L"test4.bmp", true);
+	//wcout << endl << L"Press enter to continue." << endl;
+	//cin.get();
+	//
+	//wcout << L"TEST 5: use contoursFromFile to identify areas on the java test page (javaPageSample.bmp -> test5.png):" << endl;
+	//contoursFromFile("javaPageSample.bmp", 10, 500.0, "test5.png");
+	//wcout << endl << L"Press enter to continue." << endl;
+	//cin.get();
+	//
+	//wcout << L"TEST 6: perform OCR to count how many aardvarks are in aardvarkSample.png:" << endl;
+	//OCRWordCount(L"aardvarkSample.png", L"aardvark");
+	//wcout << endl << L"Press enter to continue." << endl;
+	//cin.get();
 
-	wcout << L"TEST 2: List children of Calculator window:" << endl;
-	listWindowChildren(calcWindow);
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	wcout << L"TEST 3: Highlight Calculator child windows:" << endl;
-	highlightWindowChildren(calcWindow);
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	wcout << L"TEST 4: Save screenshot of Calculator window (test4.bmp):" << endl;
-	saveWindowScreenshot(calcWindow, L"test4.bmp", true);
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	wcout << L"TEST 5: use contoursFromFile to identify areas on the java test page (javaPageSample.bmp -> test5.png):" << endl;
-	contoursFromFile("javaPageSample.bmp", 10, 500.0, "test5.png");
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
-
-	wcout << L"TEST 6: perform OCR to count how many aardvarks are in aardvarkSample.png:" << endl;
-	OCRWordCount(L"aardvarkSample.png", L"aardvark");
-	wcout << endl << "Press enter to continue." << endl;
-	cin.get();
+	wcout << L"TEST 7: find object pictured in box.png in box_in_scene.png and highlight it in test7.png" << endl;
+	cv::Mat mat7 = findObjectInImage(cv::imread("box.png", cv::IMREAD_GRAYSCALE), cv::imread("aardvarkSample.png", cv::IMREAD_GRAYSCALE), false);
+	matToFile(mat7, "test7.png", true);
+	wcout << endl << L"Press enter to continue." << endl;
 
 	wcout << L"Test driver complete." << endl;
 }
@@ -362,23 +367,10 @@ void contoursFromFile(char* inputFileName, int contourThreshold, double minSize,
 	wcout << L"finding contours of " << inputFileName << endl;
 
 	//delegate to opencvutils
-	cv::Mat result = findCountoursFromFile(inputFileName, contourThreshold, minSize);
+	cv::Mat result = findCountoursFromFile(cv::imread(inputFileName, cv::IMREAD_GRAYSCALE), contourThreshold, minSize);
 
-	//save result to file
-	cv::imwrite(outputFileName, result);
-
-	//offer to show result to the user
-	//ask user until they respond in a valid way or the input stream closes
-	char response = '0';
-	do
-	{
-		wcout << "Saved file " << outputFileName << " to disk.  Would you like to open it? [y/n]" << endl;
-		cin >> response;
-	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
-
-	//if yes, open file with the default program
-	if (response == 'y' || response == 'Y')
-		ShellExecuteA(0, 0, outputFileName, 0, 0, SW_SHOW);
+	//save result to file and prompt user
+	matToFile(result, outputFileName, true);
 }
 
 //screencaps the window and passes it to contoursFromFile
@@ -393,51 +385,6 @@ void contoursFromWindow(WindowData targetWindow, int contourThreshold, double mi
 	//delete the temp file
 	remove("temp.bmp");
 }
-
-//// <<this was postponed because it requires building the nonfree opencv-contrib.  Redirected efforts to tesseract OCR for now>>
-////TEST 8: find sample object in sample image.  show how the match is done as well.
-//void test8(HWND targetWindow, vector<WindowData>* windowList)
-//{
-//	char	TEST8_IN_SAMPLE[ARG_ARRAY_LEN] = "homographySample.bmp";		//name of the sample object image
-//	char	TEST8_IN_SCENE[ARG_ARRAY_LEN] = "homographyScene.bmp";		//name of the sample image to search
-//	char	TEST8_OUT[ARG_ARRAY_LEN] = "test8.bmp";		//name of the output file image (char)
-//
-//	wcout << L"finding the object depected in " << TEST8_IN_SAMPLE << L" in the image " << TEST8_IN_SCENE << L" and showing the match points.";
-//
-//	//the test is performed in grayscale
-//	cv::Mat sampleMat = cv::imread(TEST8_IN_SAMPLE, cv::IMREAD_GRAYSCALE);
-//	cv::Mat sceneMat = cv::imread(TEST8_IN_SCENE, cv::IMREAD_GRAYSCALE);
-//
-//	//validate materials
-//	if (!sampleMat.data || !sceneMat.data)
-//	{
-//		wcerr << L"Failed to load images!";
-//		return;
-//	}
-//
-//	//perform search
-//	cv::Mat result = findObjectInImage(sampleMat, sceneMat, true);
-//
-//	//save result to file
-//	cv::imwrite(TEST8_OUT, result);
-//
-//	//offer to show result to the user
-//	//ask user until they respond in a valid way or the input stream closes
-//	char response = '0';
-//	do
-//	{
-//		wcout << L"Saved file " << TEST8_OUT << L" to disk.  Would you like to open it? [y/n]" << endl;
-//		cin >> response;
-//	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
-//
-//	//if yes, open file with the default program
-//	if (response == 'y' || response == 'Y')
-//		ShellExecuteA(0, 0, TEST8_OUT, 0, 0, SW_SHOW);
-//
-//	//prompt for keypress before continuing
-//	wcout << endl << "Press enter to continue." << endl;
-//	cin.get();
-//}
 
 //run OCR on image and count occurrences of a string
 void OCRWordCount(wchar_t* inputFileName, wstring searchString)
