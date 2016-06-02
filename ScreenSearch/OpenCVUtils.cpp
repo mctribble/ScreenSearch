@@ -67,8 +67,8 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//two different keypoint algorithms.  KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
-	Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
-	//Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+	//Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
+	Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
 
 	//keypoint detection and description data
 	vector<KeyPoint>	allObjectKeypoints;	//keypoints found in the object sample image
@@ -103,7 +103,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	//reduce errors by only working with matches that are relatively close to the minimum match distance (minMatchDistance*3)
 	vector<DMatch> closeKeypointMatches;
 	for (int i = 0; i < objectDescriptors.rows; i++)
-		if (allKeypointMatches[i].distance < (minMatchDistance * 3.0))
+		if (allKeypointMatches[i].distance <= (minMatchDistance * 3.0))
 			closeKeypointMatches.push_back(allKeypointMatches[i]);
 
 	//grab the keypoints from those close matches
@@ -127,6 +127,13 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	objectCorners[3] = cvPoint(0, objectSampleImage.rows);
 	perspectiveTransform(objectCorners, sceneCorners, homography);
 	
+	//if none of the scene corners are actually in the scene, then the object was not found.  return an empty image.
+	if ((sceneCorners[0].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false) &&
+		(sceneCorners[1].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false) &&
+		(sceneCorners[2].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false) &&
+		(sceneCorners[3].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false))
+		return Mat();
+
 	//create a new image to use as our output that supports color
 	Mat result = Mat(sceneToSearch.size(), CV_8UC3);
 	cvtColor(sceneToSearch, result, CV_GRAY2BGR); //uses BGR instead of RGB because that is the default in openCV

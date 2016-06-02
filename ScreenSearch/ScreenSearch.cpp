@@ -243,7 +243,10 @@ void testDriver()
 
 	wcout << L"TEST 7: find object pictured in box.png in box_in_scene.png and highlight it in test7.png" << endl;
 	cv::Mat mat7 = findObjectInImage(cv::imread("box.png", cv::IMREAD_GRAYSCALE), cv::imread("aardvarkSample.png", cv::IMREAD_GRAYSCALE), false);
-	matToFile(mat7, "test7.png", true);
+	if (mat7.empty())
+		wcerr << L"object not found in scene!" << endl;
+	else
+		matToFile(mat7, "test7.png", true);
 	wcout << endl << L"Press enter to continue." << endl;
 
 	wcout << L"Test driver complete." << endl;
