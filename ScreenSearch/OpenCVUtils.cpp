@@ -101,18 +101,16 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//reduce errors by only working with matches that are relatively close to the minimum match distance (minMatchDistance*3)
-	vector<DMatch> closeKeypointMatches;
+	vector<DMatch> closeKeypointMatches;	//matches themselves
+	vector<Point2f> closeObjectKeypoints, closeSceneKeypoints;	//points from said matches
 	for (int i = 0; i < objectDescriptors.rows; i++)
-		if (allKeypointMatches[i].distance <= (minMatchDistance * 3.0))
-			closeKeypointMatches.push_back(allKeypointMatches[i]);
-
-	//grab the keypoints from those close matches
-	vector<Point2f> closeObjectKeypoints;
-	vector<Point2f> closeSceneKeypoints;
-	for (int i = 0; i < closeKeypointMatches.size(); i++)
 	{
-		closeObjectKeypoints.push_back( allObjectKeypoints[ closeKeypointMatches[i].queryIdx ].pt );
-		closeSceneKeypoints.push_back(  allSceneKeypoints[  closeKeypointMatches[i].trainIdx ].pt );
+		if (allKeypointMatches[i].distance <= (minMatchDistance * 3.0))
+		{
+			closeKeypointMatches.push_back(allKeypointMatches[i]);
+			closeObjectKeypoints.push_back(allObjectKeypoints[allKeypointMatches[i].queryIdx].pt);
+			closeSceneKeypoints.push_back(allSceneKeypoints[allKeypointMatches[i].trainIdx].pt);
+		}
 	}
 
 	//find the transformation between keypoints on the object and their matches in the scene
