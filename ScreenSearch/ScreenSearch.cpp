@@ -25,6 +25,7 @@
 
 using namespace std;
 using namespace Gdiplus;
+using namespace cv;
 
 //predeclarations
 void testDriver();
@@ -36,6 +37,7 @@ void saveWindowScreenshot(WindowData targetWindow, wchar_t* fileName, bool showP
 void contoursFromFile(char* inputFileName, int contourThreshold, double minSize, char* outputFileName);
 void contoursFromWindow(WindowData targetWindow, int contourThreshold, double minSize, char* outputFileName);
 void OCRWordCount(wchar_t* inputFileName, wstring searchString);
+bool searchForObjectInImage(const char* object, const char* scene, const char* fileName, bool showKeypoints, bool showPrompts);
 
 //used as max length for arrays throughout the file
 const int ARG_ARRAY_LEN = 50;
@@ -65,7 +67,9 @@ int main(int argc, wchar_t* argv[])
 			<< L"6: provide an image file and output another showing the contours" << endl
 			<< L"7: output an image showing the contours of a given top-level window" << endl
 			<< L"8: perform OCR on an image, count ocurrences of a string, and show full text alongside word count" << endl
-			<< L"9: run the test driver" << endl;
+			<< L"9: Find an object in a scene and highlight it.  optionally show match data" << endl
+			<< L"10: batch test all images in ojectSamples against all images in objectScenes.  save matches to objectMatches" << endl
+			<< L"11: run the test driver" << endl;
 
 		cin.clear();
 		cin >> choice;
@@ -178,8 +182,87 @@ int main(int argc, wchar_t* argv[])
 
 				OCRWordCount(inputFileName, searchString);
 				break;
+			} 
+			case 9: //Find an object in a scene and highlight it.  optionally show match data
+			{
+				char sampleFileName[ARG_ARRAY_LEN];	
+				wcout << L"sample image?" << endl;
+				cin.getline(sampleFileName, ARG_ARRAY_LEN);
+
+				char sceneFileName[ARG_ARRAY_LEN];
+				wcout << L"scene image?" << endl;
+				cin.getline(sceneFileName, ARG_ARRAY_LEN);
+
+				char outputFileName[ARG_ARRAY_LEN];
+				wcout << L"output image?" << endl;
+				cin.getline(outputFileName, ARG_ARRAY_LEN);
+
+				char response = '0';
+				do
+				{
+					wcout << "Show match data? [y/n]" << endl;
+					cin >> response;
+				} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+				bool showKeypoints = (response == 'y' || response == 'Y');
+
+				searchForObjectInImage(sampleFileName, sceneFileName, outputFileName, showKeypoints, true);
+				break;
 			}
-			case 9: //run the test driver
+			case 10: //batch test all images in objectSamples against all images in objectScenes.  save matches to objectMatches
+			{
+				//find all files in /objectSamples
+				vector <string> objectFiles;
+				WIN32_FIND_DATAA curFileData;
+
+				//init file search
+				HANDLE curFileHandle = FindFirstFileA("./objectSamples/*", &curFileData); //get the first file
+				if (curFileHandle == INVALID_HANDLE_VALUE)
+				{
+					wcerr << L"failed to find first file";
+					break;
+				}
+
+				do { 
+					if ( !(curFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ) //if this file is NOT a directory
+						objectFiles.push_back(curFileData.cFileName);	//put its file name in the list
+				} while (FindNextFileA(curFileHandle, &curFileData) != 0); //keep going until we run out of files
+				FindClose(curFileHandle);
+
+				//find all files in /objectScenes
+				vector <string> sceneFiles;
+				curFileHandle = FindFirstFileA("./objectScenes/*", &curFileData); //get the first file
+				if (curFileHandle == INVALID_HANDLE_VALUE)
+				{
+					wcerr << L"failed to find first file";
+					break;
+				}
+
+				do {
+					if ( !(curFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ) //if this file is NOT a directory
+						sceneFiles.push_back(curFileData.cFileName);	//put its file name in the list
+				} while (FindNextFileA(curFileHandle, &curFileData) != 0); //keep going until we run out of files
+				FindClose(curFileHandle);
+
+				//report how many there are to do
+				size_t totalTestCount = objectFiles.size() * sceneFiles.size();
+				wcout << L"Testing " << objectFiles.size() << L" object samples and " << sceneFiles.size() << L" scene files. (" << totalTestCount << " tests)" << endl;
+
+				//get to work
+				int currentTest = 1;
+				for (int curObject = 0; curObject < objectFiles.size(); curObject++)
+				{
+					for (int curScene = 0; curScene < sceneFiles.size(); curScene++)
+					{
+						wcout << L"[" << currentTest << "/" << totalTestCount << L"]: ";
+						searchForObjectInImage( ("./objectSamples/" + objectFiles[curObject]).c_str(), ("./objectScenes/" + sceneFiles[curScene]).c_str(), ("./objectMatches/" + objectFiles[curObject] + "_" + sceneFiles[curScene]).c_str(), true, false);
+						currentTest++;
+					}
+				}
+
+				break;
+			}
+			case 11: //run the test driver
 			{
 				testDriver();
 				break;
@@ -241,14 +324,8 @@ void testDriver()
 	//wcout << endl << L"Press enter to continue." << endl;
 	//cin.get();
 
-	wcout << L"TEST 7: find object pictured in box.png in box_in_scene.png and highlight it in test7.png" << endl;
-	cv::Mat mat7 = findObjectInImage(cv::imread("box.png", cv::IMREAD_GRAYSCALE), cv::imread("aardvarkSample.png", cv::IMREAD_GRAYSCALE), false);
-	if (mat7.empty())
-		wcerr << L"object not found in scene!" << endl;
-	else
-		matToFile(mat7, "test7.png", true);
-	wcout << endl << L"Press enter to continue." << endl;
-
+	wcout << L"TEST 7: find a box in a scene" << endl;
+	searchForObjectInImage("box.png", "box_in_scene.png", "testA.png", true, true);
 	wcout << L"Test driver complete." << endl;
 }
 
@@ -370,7 +447,7 @@ void contoursFromFile(char* inputFileName, int contourThreshold, double minSize,
 	wcout << L"finding contours of " << inputFileName << endl;
 
 	//delegate to opencvutils
-	cv::Mat result = findCountoursFromFile(cv::imread(inputFileName, cv::IMREAD_GRAYSCALE), contourThreshold, minSize);
+	Mat result = findCountoursFromFile(imread(inputFileName, IMREAD_GRAYSCALE), contourThreshold, minSize);
 
 	//save result to file and prompt user
 	matToFile(result, outputFileName, true);
@@ -456,4 +533,26 @@ void OCRWordCount(wchar_t* inputFileName, wstring searchString)
 	}
 
 	wcout << searchString << L" appears " << count << L" times in the above text." << endl;
+}
+
+//helper function that performs a search for object in scene and saves the result to fileName.  returns true if the object was found and false if not.
+//if showKeypoints is true, resulting image will show how the match was made.
+//if showPrompts is true, this prints info about file names used in each test, whether the object is found or not, and asks if the user wants to see the images.
+bool searchForObjectInImage(const char* object,const char* scene,const char* fileName, bool showKeypoints, bool showPrompts)
+{
+	//do search
+	wcout << L"Image search: find " << object << " in " << scene << "..........";
+	Mat searchResult = findObjectInImage(imread(object, IMREAD_GRAYSCALE), imread(scene, IMREAD_GRAYSCALE), showKeypoints);
+
+	if (searchResult.empty())
+	{
+		wcout << L"[FAIL]" << endl;
+		return false;
+	}
+	else
+	{
+		wcout << L"[PASS]" << endl;
+		matToFile(searchResult, fileName, showPrompts);
+		return true;
+	}
 }

@@ -67,8 +67,8 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//two different keypoint algorithms.  KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
-	//Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
-	Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+	Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
+	//Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
 
 	//keypoint detection and description data
 	vector<KeyPoint>	allObjectKeypoints;	//keypoints found in the object sample image
@@ -117,6 +117,10 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//find the transformation between keypoints on the object and their matches in the scene
 	Mat homography = findHomography(closeObjectKeypoints, closeSceneKeypoints, RANSAC);
+
+	//if there is no homography matrix, bail out now and return an empty image
+	if (homography.empty())
+		return Mat();
 
 	//take the corners of the object image and transform them to the scene image to locate the object
 	vector<Point2f> objectCorners(4);
@@ -172,16 +176,19 @@ bool matToFile(cv::Mat src, LPCSTR fileName, bool showPrompt)
 
 	//offer to show result to the user
 	//ask user until they respond in a valid way or the input stream closes
-	char response = '0';
-	do
+	if (showPrompt)
 	{
-		wcout << "Saved file " << fileName << " to disk.  Would you like to open it? [y/n]" << endl;
-		cin >> response;
-	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+		char response = '0';
+		do
+		{
+			wcout << "Saved file " << fileName << " to disk.  Would you like to open it? [y/n]" << endl;
+			cin >> response;
+		} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
 
-	//if yes, open file with the default program
-	if (response == 'y' || response == 'Y')
-		ShellExecuteA(0, 0, fileName, 0, 0, SW_SHOW);
+		//if yes, open file with the default program
+		if (response == 'y' || response == 'Y')
+			ShellExecuteA(0, 0, fileName, 0, 0, SW_SHOW);
+	}
 
 	return true;
 }
