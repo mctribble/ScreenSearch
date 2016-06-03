@@ -80,6 +80,10 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	keypointDetector->detectAndCompute(objectSampleImage, Mat(), allObjectKeypoints, objectDescriptors);
 	keypointDetector->detectAndCompute(sceneToSearch, Mat(), allSceneKeypoints, sceneDescriptors);
 
+	//if either list of keypoints is empty, bail now and return empty image
+	if (allObjectKeypoints.empty() || allSceneKeypoints.empty())
+		return Mat();
+
 	//ensure descriptors are in CV_32F format, which is what FLANN requires
 	if(objectDescriptors.type() != CV_32F) 
 		objectDescriptors.convertTo(objectDescriptors, CV_32F);
