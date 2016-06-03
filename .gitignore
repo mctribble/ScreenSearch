@@ -41,9 +41,8 @@ local.properties
 *.user
 *.sln.docstates
 ScreenSearch.VC.opendb
-ScreenSearch/test*.bmp
-ScreenSearch/test*.png
-ScreenSearch/test9.txt
+ScreenSearch/test*
+ScreenSearch/objectMatches/*.jpg
 ScreenSearch/OCR_Result.txt
 
 # Build results

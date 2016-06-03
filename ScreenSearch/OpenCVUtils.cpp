@@ -67,8 +67,8 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//two different keypoint algorithms.  KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
-	Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
-	//Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+	//Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
+	Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
 
 	//keypoint detection and description data
 	vector<KeyPoint>	allObjectKeypoints;	//keypoints found in the object sample image
@@ -117,10 +117,14 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		}
 	}
 
+	//if there were no close matches, this is probably not a match. bail out now and return an empty image
+	if (closeKeypointMatches.empty())
+		return Mat();
+
 	//find the transformation between keypoints on the object and their matches in the scene
 	Mat homography = findHomography(closeObjectKeypoints, closeSceneKeypoints, RANSAC);
 
-	//if there is no homography matrix, bail out now and return an empty image
+	//if there is no homography matrix, this is probably not a match. bail out now and return an empty image
 	if (homography.empty())
 		return Mat();
 
@@ -132,12 +136,19 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	objectCorners[2] = cvPoint(objectSampleImage.cols, objectSampleImage.rows);
 	objectCorners[3] = cvPoint(0, objectSampleImage.rows);
 	perspectiveTransform(objectCorners, sceneCorners, homography);
-	
+
 	//if none of the scene corners are actually in the scene, then the object was not found.  return an empty image.
-	if ((sceneCorners[0].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false) &&
-		(sceneCorners[1].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false) &&
-		(sceneCorners[2].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false) &&
-		(sceneCorners[3].inside(Rect(0, 0, sceneToSearch.cols, sceneToSearch.rows)) == false))
+	//(small buffer to account for floating point error)
+	if ((sceneCorners[0].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
+		(sceneCorners[1].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
+		(sceneCorners[2].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
+		(sceneCorners[3].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false))
+		return Mat();
+
+	//if the area of the object on the screen is too small, this is likely a false positive.  bail and return an empty image
+	const double MIN_AREA = 1000.0;
+	double area = contourArea(sceneCorners);
+	if (area < MIN_AREA)
 		return Mat();
 
 	//create a new image to use as our output that supports color
