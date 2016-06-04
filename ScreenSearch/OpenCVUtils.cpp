@@ -67,8 +67,8 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//two different keypoint algorithms.  KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
-	//Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
-	Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+	Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
+	//Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
 
 	//keypoint detection and description data
 	vector<KeyPoint>	allObjectKeypoints;	//keypoints found in the object sample image
@@ -82,7 +82,11 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//error detection: no keypoints
 	if (allObjectKeypoints.empty() || allSceneKeypoints.empty())
+	{
+		wcout << L"no keypoints";
 		return Mat();
+	}
+		
 
 	//ensure descriptors are in CV_32F format, which is what FLANN requires
 	if(objectDescriptors.type() != CV_32F) 
@@ -118,16 +122,26 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		}
 	}
 
-	//error detection: no matches
-	if (closeKeypointMatches.empty())
+	//error detection: not enough matches
+	int MIN_MATCH_COUNT = 15;
+	int matchCount = closeKeypointMatches.size();
+	if (matchCount < MIN_MATCH_COUNT)
+	{
+		wcout << L"not enough matches (" << matchCount << "/" << MIN_MATCH_COUNT << L")";
 		return Mat();
+	}
+		
 
 	//find the transformation between keypoints on the object and their matches in the scene
 	Mat homography = findHomography(closeObjectKeypoints, closeSceneKeypoints, RANSAC);
 
 	//error detection: no transform
 	if (homography.empty())
+	{
+		wcout << L"couldn't find transform";
 		return Mat();
+	}
+		
 
 	//take the corners of the object image and transform them to the scene image to locate the object
 	vector<Point2f> objectCorners(4);
@@ -140,17 +154,25 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//error detection: the detected region is not actually inside the scene
 	//(small buffer to account for floating point error)
-	if ((sceneCorners[0].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
-		(sceneCorners[1].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
-		(sceneCorners[2].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
-		(sceneCorners[3].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false))
+	if ((sceneCorners[0].inside(Rect(-1, -1, sceneToSearch.cols + 2, sceneToSearch.rows + 2)) == false) &&
+		(sceneCorners[1].inside(Rect(-1, -1, sceneToSearch.cols + 2, sceneToSearch.rows + 2)) == false) &&
+		(sceneCorners[2].inside(Rect(-1, -1, sceneToSearch.cols + 2, sceneToSearch.rows + 2)) == false) &&
+		(sceneCorners[3].inside(Rect(-1, -1, sceneToSearch.cols + 2, sceneToSearch.rows + 2)) == false))
+	{
+		wcout << L"outside the scene";
 		return Mat();
+	}
+		
 
 	//error detection: detected region is very small
 	const double MIN_AREA = 2000.0;
 	double area = contourArea(sceneCorners);
 	if (area < MIN_AREA)
+	{
+		wcout << L"region too small (" << area << L"/" << MIN_AREA << L")";
 		return Mat();
+	}
+		
 
 	//experimental error detection: two corners are very close together (usually from deformed regions)
 	//testing based on distance squared for performance reasons
@@ -161,7 +183,11 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		(Point2fDistanceSquared(sceneCorners[1], sceneCorners[2]) < MIN_DIST_SQUARED) ||
 		(Point2fDistanceSquared(sceneCorners[1], sceneCorners[3]) < MIN_DIST_SQUARED) ||
 		(Point2fDistanceSquared(sceneCorners[2], sceneCorners[3]) < MIN_DIST_SQUARED))
+	{
+		wcout << "corners too close";
 		return Mat();
+	}
+		
 
 	//create a new image to use as our output that supports color
 	Mat result = Mat(sceneToSearch.size(), CV_8UC3);
@@ -219,7 +245,7 @@ bool matToFile(cv::Mat src, LPCSTR fileName, bool showPrompt)
 }
 
 //returns distance squared between two points
-float Point2fDistanceSquared(Point2f a, Point2f b)
+inline float Point2fDistanceSquared(Point2f a, Point2f b)
 {
 	return (((a.x - b.x)*(a.x - b.x)) + ((a.y - b.y)*(a.y - b.y)));
 }

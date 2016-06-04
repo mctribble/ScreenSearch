@@ -22,4 +22,4 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat imageToSearch, bool
 bool matToFile(cv::Mat src, LPCSTR dest, bool showPrompt = false);
 
 //returns distance squared between two points
-float Point2fDistanceSquared(cv::Point2f a, cv::Point2f b);
+inline float Point2fDistanceSquared(cv::Point2f a, cv::Point2f b);
