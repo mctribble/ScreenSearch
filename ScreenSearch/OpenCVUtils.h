@@ -20,3 +20,6 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat imageToSearch, bool
 //saves the given Mat to a file of the given name.  if showPrompt is true, ask the user if they want
 //to see the file after it is saved.  If yes, it is opened with the system default application
 bool matToFile(cv::Mat src, LPCSTR dest, bool showPrompt = false);
+
+//returns distance squared between two points
+float Point2fDistanceSquared(cv::Point2f a, cv::Point2f b);

@@ -80,7 +80,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	keypointDetector->detectAndCompute(objectSampleImage, Mat(), allObjectKeypoints, objectDescriptors);
 	keypointDetector->detectAndCompute(sceneToSearch, Mat(), allSceneKeypoints, sceneDescriptors);
 
-	//if either list of keypoints is empty, bail now and return empty image
+	//error detection: no keypoints
 	if (allObjectKeypoints.empty() || allSceneKeypoints.empty())
 		return Mat();
 
@@ -90,8 +90,9 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	if(sceneDescriptors.type() != CV_32F)
 		sceneDescriptors.convertTo(sceneDescriptors, CV_32F);
 
-	//find keypoint matches between the two images using FLANN (http://docs.opencv.org/3.1.0/dc/de2/classcv_1_1FlannBasedMatcher.html#gsc.tab=0)
-	FlannBasedMatcher keypointMatcher;
+	//find keypoint matches between the two images 
+	//FlannBasedMatcher keypointMatcher;	//using FLANN (faster, less accurate) (http://docs.opencv.org/3.1.0/dc/de2/classcv_1_1FlannBasedMatcher.html#gsc.tab=0)
+	BFMatcher keypointMatcher;		//using brute force (slower, more accurate) (http://docs.opencv.org/3.1.0/d3/da1/classcv_1_1BFMatcher.html#gsc.tab=0)
 	vector<DMatch> allKeypointMatches;
 	keypointMatcher.match(objectDescriptors, sceneDescriptors, allKeypointMatches);
 
@@ -117,14 +118,14 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		}
 	}
 
-	//if there were no close matches, this is probably not a match. bail out now and return an empty image
+	//error detection: no matches
 	if (closeKeypointMatches.empty())
 		return Mat();
 
 	//find the transformation between keypoints on the object and their matches in the scene
 	Mat homography = findHomography(closeObjectKeypoints, closeSceneKeypoints, RANSAC);
 
-	//if there is no homography matrix, this is probably not a match. bail out now and return an empty image
+	//error detection: no transform
 	if (homography.empty())
 		return Mat();
 
@@ -137,7 +138,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	objectCorners[3] = cvPoint(0, objectSampleImage.rows);
 	perspectiveTransform(objectCorners, sceneCorners, homography);
 
-	//if none of the scene corners are actually in the scene, then the object was not found.  return an empty image.
+	//error detection: the detected region is not actually inside the scene
 	//(small buffer to account for floating point error)
 	if ((sceneCorners[0].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
 		(sceneCorners[1].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false) &&
@@ -145,10 +146,21 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		(sceneCorners[3].inside(Rect(-1, -1, sceneToSearch.cols+2, sceneToSearch.rows+2)) == false))
 		return Mat();
 
-	//if the area of the object on the screen is too small, this is likely a false positive.  bail and return an empty image
-	const double MIN_AREA = 1000.0;
+	//error detection: detected region is very small
+	const double MIN_AREA = 2000.0;
 	double area = contourArea(sceneCorners);
 	if (area < MIN_AREA)
+		return Mat();
+
+	//experimental error detection: two corners are very close together (usually from deformed regions)
+	//testing based on distance squared for performance reasons
+	const double MIN_DIST_SQUARED = 2500;
+	if ((Point2fDistanceSquared(sceneCorners[0], sceneCorners[1]) < MIN_DIST_SQUARED) ||
+		(Point2fDistanceSquared(sceneCorners[0], sceneCorners[2]) < MIN_DIST_SQUARED) ||
+		(Point2fDistanceSquared(sceneCorners[0], sceneCorners[3]) < MIN_DIST_SQUARED) ||
+		(Point2fDistanceSquared(sceneCorners[1], sceneCorners[2]) < MIN_DIST_SQUARED) ||
+		(Point2fDistanceSquared(sceneCorners[1], sceneCorners[3]) < MIN_DIST_SQUARED) ||
+		(Point2fDistanceSquared(sceneCorners[2], sceneCorners[3]) < MIN_DIST_SQUARED))
 		return Mat();
 
 	//create a new image to use as our output that supports color
@@ -204,4 +216,10 @@ bool matToFile(cv::Mat src, LPCSTR fileName, bool showPrompt)
 	}
 
 	return true;
+}
+
+//returns distance squared between two points
+float Point2fDistanceSquared(Point2f a, Point2f b)
+{
+	return (((a.x - b.x)*(a.x - b.x)) + ((a.y - b.y)*(a.y - b.y)));
 }
