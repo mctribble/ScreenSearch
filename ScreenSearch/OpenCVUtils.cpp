@@ -123,8 +123,8 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//error detection: not enough matches
-	int MIN_MATCH_COUNT = 15;
-	int matchCount = closeKeypointMatches.size();
+	size_t MIN_MATCH_COUNT = 30;
+	size_t matchCount = closeKeypointMatches.size();
 	if (matchCount < MIN_MATCH_COUNT)
 	{
 		wcout << L"not enough matches (" << matchCount << "/" << MIN_MATCH_COUNT << L")";
@@ -165,7 +165,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		
 
 	//error detection: detected region is very small
-	const double MIN_AREA = 2000.0;
+	const double MIN_AREA = 1500.0;
 	double area = contourArea(sceneCorners);
 	if (area < MIN_AREA)
 	{
@@ -193,7 +193,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	Mat result = Mat(sceneToSearch.size(), CV_8UC3);
 	cvtColor(sceneToSearch, result, CV_GRAY2BGR); //uses BGR instead of RGB because that is the default in openCV
 
-	//regardless of showPrompt, we want the object to be highlighted in the scene.  We draw this outline first:
+	//regardless of showPrompt, we want thcase 0e object to be highlighted in the scene.  We draw this outline first:
 	line(result, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 4);
 	line(result, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 4);
 	line(result, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 4);
