@@ -587,12 +587,12 @@ bool searchForObjectInImage(const char* object,const char* scene,const char* fil
 
 	if (searchResult.empty())
 	{
-		wcout << L"[FAIL]" << endl;
+		wcout << L"[NO_MATCH]" << endl;
 		return false;
 	}
 	else
 	{
-		wcout << L"[PASS]" << endl;
+		wcout << L"[MATCH]" << endl;
 		matToFile(searchResult, fileName, showPrompts);
 		return true;
 	}
