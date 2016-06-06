@@ -23,14 +23,9 @@ RNG rng(GetTickCount()); //declared global to make sure it only gets seeded once
 		return sourceMat;
 	}
 
-	//convert it to grayscale.  required for later algorithms that dont use the color data anyway.  Also run a blur filter on it to reduce noise
-	Mat sourceMatGray;
-	cvtColor(sourceMat, sourceMatGray, COLOR_BGR2GRAY);
-	blur(sourceMatGray, sourceMatGray, Size(3, 3));
-
 	//run edge detection on it using the "canny" algorithm (http://docs.opencv.org/3.1.0/dd/d1a/group__imgproc__feature.html#ga04723e007ed888ddf11d9ba04e2232de&gsc.tab=0)
 	Mat edgeDetectionOutput;
-	Canny(sourceMatGray, edgeDetectionOutput, threshold, threshold * 2);
+	Canny(sourceMat, edgeDetectionOutput, threshold, threshold * 2);
 
 	//run the countour detection (http://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga17ed9f5d79ae97bd4c7cf18403e1689a&gsc.tab=0)
 	vector<vector<Point>> contours;
