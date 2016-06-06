@@ -38,21 +38,14 @@ void contoursFromFile(char* inputFileName, int contourThreshold, double minSize,
 void contoursFromWindow(WindowData targetWindow, int contourThreshold, double minSize, char* outputFileName);
 void OCRWordCount(wchar_t* inputFileName, wstring searchString);
 bool searchForObjectInImage(const char* object, const char* scene, const char* fileName, bool showKeypoints, bool showPrompts);
+void menu();
+void batchImageTest();
 
 //used as max length for arrays throughout the file
 const int ARG_ARRAY_LEN = 50;
 
-int main(int argc, wchar_t* argv[])
+void menu()
 {
-	//ensure wcout will actually support unicode (http://stackoverflow.com/a/19258509)
-	//WARNING: this seems to break cout, though there isn't much reason to use it anyway in a unicode project such as this
-	_setmode(_fileno(stdout), _O_U16TEXT);
-
-	//init GDI+
-	GdiplusStartupInput gdiplusStartupInput;
-	ULONG_PTR           gdiplusToken;
-	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-
 	//menu
 	int choice = -1;
 	while (choice != 0)
@@ -75,203 +68,251 @@ int main(int argc, wchar_t* argv[])
 		cin >> choice;
 		cin.get(); //clear newline
 
-		//perform chosen item
+				   //perform chosen item
 		switch (choice)
 		{
-			case 0: //quit
+		case 0: //quit
+		{
+			wcout << L"goodbye." << endl;
+			break;
+		}
+		case 1: //List top - level windows
+		{
+			listTopWindows();
+			break;
+		}
+		case 2: //List child windows of a specific top - level window
+		{
+			wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+			wcout << L"Which window?" << endl;
+			wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
+
+			listWindowChildren(getWindowDataFromTitle(targetWindowTitle));
+			break;
+		}
+		case 3: //highlight all windows(warning : this tends to flicker significantly)
+		{
+			WindowData desktop;
+			desktop.handle = GetDesktopWindow();
+			lstrcpy(desktop.title, L"Desktop");
+			highlightWindowChildren(desktop);
+			break;
+		}
+		case 4: //highlight child windows of a specific top - level window
+		{
+			wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+			wcout << L"Which window?" << endl;
+			wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
+
+			highlightWindowChildren(getWindowDataFromTitle(targetWindowTitle));
+			break;
+		}
+		case 5: //save screenshot of a specific top - level window
+		{
+			wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+			wcout << L"Which window?" << endl;
+			wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
+
+			wchar_t fileName[ARG_ARRAY_LEN];
+			wcout << L"Name of new file?" << endl;
+			wcin.getline(fileName, ARG_ARRAY_LEN);
+
+			saveWindowScreenshot(getWindowDataFromTitle(targetWindowTitle), fileName, true);
+			break;
+		}
+		case 6: //provide an image file and output another showing the contours
+		{
+			char inputFileName[ARG_ARRAY_LEN];	//name of the sample image
+			wcout << L"input file name?" << endl;
+			cin >> inputFileName;
+
+			int		contourThreshold;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).
+			wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
+			cin >> contourThreshold;
+
+			double	minSize; //culls contours smaller than this
+			wcout << L"Minimum size? (larger values less sensitive)." << endl;
+			cin >> minSize;
+
+			char outputFileName[ARG_ARRAY_LEN];	//name of the output image
+			wcout << L"output file name?" << endl;
+			cin >> outputFileName;
+
+			contoursFromFile(inputFileName, contourThreshold, minSize, outputFileName);
+			break;
+		}
+		case 7: //output an image showing the contours of a given top - level window
+		{
+			wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
+			wcout << L"Which window?" << endl;
+			wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
+
+			int		contourThreshold;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
+			wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
+			cin >> contourThreshold;
+
+			double	minSize; //culls contours smaller than this
+			wcout << L"Minimum size? (larger values less sensitive)." << endl;
+			cin >> minSize;
+
+			char outputFileName[ARG_ARRAY_LEN];	//name of the output image
+			wcout << L"output file name?" << endl;
+			cin >> outputFileName;
+
+			contoursFromWindow(getWindowDataFromTitle(targetWindowTitle), contourThreshold, minSize, outputFileName);
+			break;
+		}
+		case 8: //OCR
+		{
+			//input vars
+			wchar_t inputFileName[ARG_ARRAY_LEN];	//name of the target image
+			wcout << L"Scan which image?" << endl;
+			wcin.getline(inputFileName, ARG_ARRAY_LEN);
+
+			wchar_t searchString[ARG_ARRAY_LEN];
+			wcout << L"What do you want to look for in the image?" << endl;
+			wcin.getline(searchString, ARG_ARRAY_LEN);
+
+			OCRWordCount(inputFileName, searchString);
+			break;
+		}
+		case 9: //Find an object in a scene and highlight it.  optionally show match data
+		{
+			char sampleFileName[ARG_ARRAY_LEN];
+			wcout << L"sample image?" << endl;
+			cin.getline(sampleFileName, ARG_ARRAY_LEN);
+
+			char sceneFileName[ARG_ARRAY_LEN];
+			wcout << L"scene image?" << endl;
+			cin.getline(sceneFileName, ARG_ARRAY_LEN);
+
+			char outputFileName[ARG_ARRAY_LEN];
+			wcout << L"output image?" << endl;
+			cin.getline(outputFileName, ARG_ARRAY_LEN);
+
+			char response = '0';
+			do
 			{
-				wcout << L"goodbye." << endl;
-				break;
-			}
-			case 1: //List top - level windows
-			{
-				listTopWindows();
-				break;
-			}
-			case 2: //List child windows of a specific top - level window
-			{
-				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
-				wcout << L"Which window?" << endl;
-				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
+				wcout << "Show match data? [y/n]" << endl;
+				cin >> response;
+			} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
 
-				listWindowChildren(getWindowDataFromTitle(targetWindowTitle));
-				break;
-			}
-			case 3: //highlight all windows(warning : this tends to flicker significantly)
-			{
-				WindowData desktop;
-				desktop.handle = GetDesktopWindow();
-				lstrcpy(desktop.title, L"Desktop");
-				highlightWindowChildren(desktop);
-				break;
-			}
-			case 4: //highlight child windows of a specific top - level window
-			{
-				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
-				wcout << L"Which window?" << endl;
-				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
+			bool showKeypoints = (response == 'y' || response == 'Y');
 
-				highlightWindowChildren(getWindowDataFromTitle(targetWindowTitle));
-				break;
-			}
-			case 5: //save screenshot of a specific top - level window
-			{
-				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
-				wcout << L"Which window?" << endl;
-				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
+			searchForObjectInImage(sampleFileName, sceneFileName, outputFileName, showKeypoints, true);
+			break;
+		}
+		case 10: //batch test all images in objectSamples against all images in objectScenes.  save matches to objectMatches
+		{
+			batchImageTest();
 
-				wchar_t fileName[ARG_ARRAY_LEN];
-				wcout << L"Name of new file?" << endl;
-				wcin.getline(fileName, ARG_ARRAY_LEN);
-
-				saveWindowScreenshot(getWindowDataFromTitle(targetWindowTitle), fileName, true);
-				break;
-			}
-			case 6: //provide an image file and output another showing the contours
-			{
-				char inputFileName[ARG_ARRAY_LEN];	//name of the sample image
-				wcout << L"input file name?" << endl;
-				cin >> inputFileName;
-
-				int		contourThreshold;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).
-				wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
-				cin >> contourThreshold;
-
-				double	minSize; //culls contours smaller than this
-				wcout << L"Minimum size? (larger values less sensitive)." << endl;
-				cin >> minSize;
-
-				char outputFileName[ARG_ARRAY_LEN];	//name of the output image
-				wcout << L"output file name?" << endl;
-				cin >> outputFileName;
-
-				contoursFromFile(inputFileName, contourThreshold, minSize, outputFileName);
-				break;
-			}
-			case 7: //output an image showing the contours of a given top - level window
-			{
-				wchar_t targetWindowTitle[WindowData::MAX_TITLE_LENGTH];
-				wcout << L"Which window?" << endl;
-				wcin.getline(targetWindowTitle, WindowData::MAX_TITLE_LENGTH);
-
-				int		contourThreshold;	//sensitivity of the edge detection step.  lower numbers find more edges (max 255).  This search is very sensitive because the sample page has light gray on a white background.
-				wcout << L"What threshold? (lower numbers are more sensitive.  range 0-255)" << endl;
-				cin >> contourThreshold;
-
-				double	minSize; //culls contours smaller than this
-				wcout << L"Minimum size? (larger values less sensitive)." << endl;
-				cin >> minSize;
-
-				char outputFileName[ARG_ARRAY_LEN];	//name of the output image
-				wcout << L"output file name?" << endl;
-				cin >> outputFileName;
-
-				contoursFromWindow(getWindowDataFromTitle(targetWindowTitle), contourThreshold, minSize, outputFileName);
-				break;
-			}
-			case 8: //OCR
-			{
-				//input vars
-				wchar_t inputFileName[ARG_ARRAY_LEN];	//name of the target image
-				wcout << L"Scan which image?" << endl;
-				wcin.getline(inputFileName, ARG_ARRAY_LEN);
-				
-				wchar_t searchString[ARG_ARRAY_LEN];
-				wcout << L"What do you want to look for in the image?" << endl;
-				wcin.getline(searchString, ARG_ARRAY_LEN);
-
-				OCRWordCount(inputFileName, searchString);
-				break;
-			} 
-			case 9: //Find an object in a scene and highlight it.  optionally show match data
-			{
-				char sampleFileName[ARG_ARRAY_LEN];	
-				wcout << L"sample image?" << endl;
-				cin.getline(sampleFileName, ARG_ARRAY_LEN);
-
-				char sceneFileName[ARG_ARRAY_LEN];
-				wcout << L"scene image?" << endl;
-				cin.getline(sceneFileName, ARG_ARRAY_LEN);
-
-				char outputFileName[ARG_ARRAY_LEN];
-				wcout << L"output image?" << endl;
-				cin.getline(outputFileName, ARG_ARRAY_LEN);
-
-				char response = '0';
-				do
-				{
-					wcout << "Show match data? [y/n]" << endl;
-					cin >> response;
-				} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
-
-				bool showKeypoints = (response == 'y' || response == 'Y');
-
-				searchForObjectInImage(sampleFileName, sceneFileName, outputFileName, showKeypoints, true);
-				break;
-			}
-			case 10: //batch test all images in objectSamples against all images in objectScenes.  save matches to objectMatches
-			{
-				//find all files in /objectSamples
-				vector <string> objectFiles;
-				WIN32_FIND_DATAA curFileData;
-
-				//init file search
-				HANDLE curFileHandle = FindFirstFileA("./objectSamples/*", &curFileData); //get the first file
-				if (curFileHandle == INVALID_HANDLE_VALUE)
-				{
-					wcerr << L"failed to find first file";
-					break;
-				}
-
-				do { 
-					if ( !(curFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ) //if this file is NOT a directory
-						objectFiles.push_back(curFileData.cFileName);	//put its file name in the list
-				} while (FindNextFileA(curFileHandle, &curFileData) != 0); //keep going until we run out of files
-				FindClose(curFileHandle);
-
-				//find all files in /objectScenes
-				vector <string> sceneFiles;
-				curFileHandle = FindFirstFileA("./objectScenes/*", &curFileData); //get the first file
-				if (curFileHandle == INVALID_HANDLE_VALUE)
-				{
-					wcerr << L"failed to find first file";
-					break;
-				}
-
-				do {
-					if ( !(curFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ) //if this file is NOT a directory
-						sceneFiles.push_back(curFileData.cFileName);	//put its file name in the list
-				} while (FindNextFileA(curFileHandle, &curFileData) != 0); //keep going until we run out of files
-				FindClose(curFileHandle);
-
-				//report how many there are to do
-				size_t totalTestCount = objectFiles.size() * sceneFiles.size();
-				wcout << L"Testing " << objectFiles.size() << L" object samples and " << sceneFiles.size() << L" scene files. (" << totalTestCount << " tests)" << endl;
-
-				//get to work
-				int currentTest = 1;
-				for (int curObject = 0; curObject < objectFiles.size(); curObject++)
-				{
-					for (int curScene = 0; curScene < sceneFiles.size(); curScene++)
-					{
-						wcout << L"[" << currentTest << "/" << totalTestCount << L"]: ";
-						searchForObjectInImage( ("./objectSamples/" + objectFiles[curObject]).c_str(), ("./objectScenes/" + sceneFiles[curScene]).c_str(), ("./objectMatches/" + objectFiles[curObject] + "_" + sceneFiles[curScene]).c_str(), true, false);
-						currentTest++;
-					}
-				}
-
-				break;
-			}
-			case 11: //run the test driver
-			{
-				testDriver();
-				break;
-			}
+			break;
+		}
+		case 11: //run the test driver
+		{
+			testDriver();
+			break;
+		}
 		} //end menu
 
-		//prompt for keypress before continuing
+		  //prompt for keypress before continuing
 		wcout << endl << "Press enter to continue." << endl;
 		cin.get();
+
+	}
+}
+
+int main(int argc, char* argv[])
+{
+	//ensure wcout will actually support unicode (http://stackoverflow.com/a/19258509)
+	//WARNING: this seems to break cout, though there isn't much reason to use it anyway in a unicode project such as this
+	_setmode(_fileno(stdout), _O_U16TEXT);
+
+	//init GDI+
+	GdiplusStartupInput gdiplusStartupInput;
+	ULONG_PTR           gdiplusToken;
+	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+	//if there are no arguments, the user is given a menu
+	if (argc == 1)
+		menu();
+
+	//otherwise, act according to the arguments
+	if (strcmp(argv[1], "windowList") == 0)
+	{
+		if (argc == 2)
+			listTopWindows();
+		else if (argc == 3)
+		{
+			//requires argument conversion
+			wchar_t window[30];
+			mbstowcs_s(NULL, window, argv[2], 30);
+			listWindowChildren(getWindowDataFromTitle(window));
+		}
+		else
+			wcout << L"windowList [windowName]: lists all windows that are children of windowName, or all windows if unspecified." << endl;
+	} 
+	else if (strcmp(argv[1], "windowScreenshot") == 0)
+	{
+		if (argc == 4)
+		{
+			//requires argument conversion
+			wchar_t window[30];
+			wchar_t file[30];
+			mbstowcs_s(NULL, window, argv[2], 30);
+			mbstowcs_s(NULL, file, argv[3], 30);
+			saveWindowScreenshot(getWindowDataFromTitle(window), file, false);
+		}
+		else
+			wcout << L"windowScreenshot <windowName> <fileName>: saves a screenshot of the window.  supports .png and .bmp." << endl;
+	}
+	else if (strcmp(argv[1], "imageContours") == 0)
+	{
+		if (argc == 4)
+		{
+			wcout << argv[2] << endl << argv[3] << endl;
+			contoursFromFile(argv[2], 10, 250.0, argv[3]);
+		}
+		else
+			wcout << L"imageContours <imageIn> <imageOut>: finds contours in the image and saves the result to another image." << endl;
+	}
+	else if (strcmp(argv[1], "OCR") == 0)
+	{
+		if (argc == 4)
+		{
+			wchar_t in[30];
+			wchar_t searchString[30];
+			mbstowcs_s(NULL, in, argv[2], 30);
+			mbstowcs_s(NULL, searchString, argv[3], 30);
+			OCRWordCount(in, searchString);
+		}
+		else
+			wcout << L"OCR <imageName> <searchString>: does OCR on the image and counts occurrences of searchString." << endl;
+	}
+	else if (strcmp(argv[1], "objectDetection") == 0)
+	{
+		if (argc == 5 || (argc == 6 && strcmp(argv[5], "-v") == 0)) //either there are only five arguments, or there are six and the last is "-v".
+			searchForObjectInImage(argv[2], argv[3], argv[4], (argc == 6), false);
+		else
+			wcout << L"OCR <imageName> <searchString>: does OCR on the image and counts occurrences of searchString." << endl;
+	}
+	else if (strcmp(argv[1], "batchObjectDetection") == 0)
+	{
+		if (argc == 2)
+			batchImageTest();
+		else
+			wcout << L"batchObjectDetection: performs object detection on each image in /objectSamples and each scene in /objectScenes.  Results are saved verbosely to /objectMatches." << endl;
+	}
+	else
+	{
+		//usage prompt
+		wcout << L"Available commands: " << endl <<
+			L"windowList [windowName]: lists all windows that are children of windowName, or all windows if unspecified." << endl <<
+			L"windowScreenshot <windowName> <fileName>: saves a screenshot of the window.  supports .png and .bmp." << endl <<
+			L"imageContours <imageIn> <imageOut>: finds contours in the image and saves the result to another image." << endl <<
+			L"OCR <imageName> <searchString>: does OCR on the image and counts occurrences of searchString." << endl <<
+			L"objectDetection <sampleImage> <sceneImage> <outputImage> [-v]: searches for the sample object in the target scene and saves results to the output image.  The -v flag causes output to include match data." << endl <<
+			L"batchObjectDetection: performs object detection on each image in /objectSamples and each scene in /objectScenes.  Results are saved verbosely to /objectMatches." << endl;
 
 	}
 
@@ -294,35 +335,35 @@ void testDriver()
 		return;
 	}
 
-	//wcout << L"TEST 1: List Windows:" << endl;
-	//listTopWindows();
-	//wcout << endl << L"Press enter to continue." << endl;
-	//cin.get();
-	//
-	//wcout << L"TEST 2: List children of Calculator window:" << endl;
-	//listWindowChildren(calcWindow);
-	//wcout << endl << L"Press enter to continue." << endl;
-	//cin.get();
-	//
-	//wcout << L"TEST 3: Highlight Calculator child windows:" << endl;
-	//highlightWindowChildren(calcWindow);
-	//wcout << endl << L"Press enter to continue." << endl;
-	//cin.get();
-	//
-	//wcout << L"TEST 4: Save screenshot of Calculator window (test4.bmp):" << endl;
-	//saveWindowScreenshot(calcWindow, L"test4.bmp", true);
-	//wcout << endl << L"Press enter to continue." << endl;
-	//cin.get();
-	//
-	//wcout << L"TEST 5: use contoursFromFile to identify areas on the java test page (javaPageSample.bmp -> test5.png):" << endl;
-	//contoursFromFile("javaPageSample.bmp", 10, 500.0, "test5.png");
-	//wcout << endl << L"Press enter to continue." << endl;
-	//cin.get();
-	//
-	//wcout << L"TEST 6: perform OCR to count how many aardvarks are in aardvarkSample.png:" << endl;
-	//OCRWordCount(L"aardvarkSample.png", L"aardvark");
-	//wcout << endl << L"Press enter to continue." << endl;
-	//cin.get();
+	wcout << L"TEST 1: List Windows:" << endl;
+	listTopWindows();
+	wcout << endl << L"Press enter to continue." << endl;
+	cin.get();
+	
+	wcout << L"TEST 2: List children of Calculator window:" << endl;
+	listWindowChildren(calcWindow);
+	wcout << endl << L"Press enter to continue." << endl;
+	cin.get();
+	
+	wcout << L"TEST 3: Highlight Calculator child windows:" << endl;
+	highlightWindowChildren(calcWindow);
+	wcout << endl << L"Press enter to continue." << endl;
+	cin.get();
+	
+	wcout << L"TEST 4: Save screenshot of Calculator window (test4.bmp):" << endl;
+	saveWindowScreenshot(calcWindow, L"test4.bmp", true);
+	wcout << endl << L"Press enter to continue." << endl;
+	cin.get();
+	
+	wcout << L"TEST 5: use contoursFromFile to identify areas on the java test page (javaPageSample.bmp -> test5.png):" << endl;
+	contoursFromFile("javaPageSample.bmp", 10, 500.0, "test5.png");
+	wcout << endl << L"Press enter to continue." << endl;
+	cin.get();
+	
+	wcout << L"TEST 6: perform OCR to count how many aardvarks are in aardvarkSample.png:" << endl;
+	OCRWordCount(L"aardvarkSample.png", L"aardvark");
+	wcout << endl << L"Press enter to continue." << endl;
+	cin.get();
 
 	wcout << L"TEST 7: find a box in a scene" << endl;
 	searchForObjectInImage("box.png", "box_in_scene.png", "testA.png", true, true);
@@ -554,5 +595,57 @@ bool searchForObjectInImage(const char* object,const char* scene,const char* fil
 		wcout << L"[PASS]" << endl;
 		matToFile(searchResult, fileName, showPrompts);
 		return true;
+	}
+}
+
+void batchImageTest() 
+{
+	//find all files in /objectSamples
+	vector <string> objectFiles;
+	WIN32_FIND_DATAA curFileData;
+
+	//init file search
+	HANDLE curFileHandle = FindFirstFileA("./objectSamples/*", &curFileData); //get the first file
+	if (curFileHandle == INVALID_HANDLE_VALUE)
+	{
+		wcerr << L"failed to find first file";
+		return;
+	}
+
+	do {
+		if (!(curFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) //if this file is NOT a directory
+			objectFiles.push_back(curFileData.cFileName);	//put its file name in the list
+	} while (FindNextFileA(curFileHandle, &curFileData) != 0); //keep going until we run out of files
+	FindClose(curFileHandle);
+
+	//find all files in /objectScenes
+	vector <string> sceneFiles;
+	curFileHandle = FindFirstFileA("./objectScenes/*", &curFileData); //get the first file
+	if (curFileHandle == INVALID_HANDLE_VALUE)
+	{
+		wcerr << L"failed to find first file";
+		return;
+	}
+
+	do {
+		if (!(curFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) //if this file is NOT a directory
+			sceneFiles.push_back(curFileData.cFileName);	//put its file name in the list
+	} while (FindNextFileA(curFileHandle, &curFileData) != 0); //keep going until we run out of files
+	FindClose(curFileHandle);
+
+	//report how many there are to do
+	size_t totalTestCount = objectFiles.size() * sceneFiles.size();
+	wcout << L"Testing " << objectFiles.size() << L" object samples and " << sceneFiles.size() << L" scene files. (" << totalTestCount << " tests)" << endl;
+
+	//get to work
+	int currentTest = 1;
+	for (int curObject = 0; curObject < objectFiles.size(); curObject++)
+	{
+		for (int curScene = 0; curScene < sceneFiles.size(); curScene++)
+		{
+			wcout << L"[" << currentTest << "/" << totalTestCount << L"]: ";
+			searchForObjectInImage(("./objectSamples/" + objectFiles[curObject]).c_str(), ("./objectScenes/" + sceneFiles[curScene]).c_str(), ("./objectMatches/" + objectFiles[curObject] + "_" + sceneFiles[curScene]).c_str(), true, false);
+			currentTest++;
+		}
 	}
 }
