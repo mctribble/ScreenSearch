@@ -637,6 +637,15 @@ void batchImageTest()
 	size_t totalTestCount = objectFiles.size() * sceneFiles.size();
 	wcout << L"Testing " << objectFiles.size() << L" object samples and " << sceneFiles.size() << L" scene files. (" << totalTestCount << " tests)" << endl;
 
+	//indicates wheter the images were matched to anything
+	bool * objectsMatched = new bool[objectFiles.size()];
+	for (size_t i = 0; i < objectFiles.size(); i++) 
+		objectsMatched[i] = false;
+
+	bool * scenesMatched = new bool[sceneFiles.size()];
+	for (size_t i = 0; i < sceneFiles.size(); i++) 
+		scenesMatched[i] = false;
+
 	//get to work
 	int currentTest = 1;
 	for (int curObject = 0; curObject < objectFiles.size(); curObject++)
@@ -644,8 +653,28 @@ void batchImageTest()
 		for (int curScene = 0; curScene < sceneFiles.size(); curScene++)
 		{
 			wcout << L"[" << currentTest << "/" << totalTestCount << L"]: ";
-			searchForObjectInImage(("./objectSamples/" + objectFiles[curObject]).c_str(), ("./objectScenes/" + sceneFiles[curScene]).c_str(), ("./objectMatches/" + objectFiles[curObject] + "_" + sceneFiles[curScene]).c_str(), true, false);
+			bool matched = searchForObjectInImage(("./objectSamples/" + objectFiles[curObject]).c_str(), ("./objectScenes/" + sceneFiles[curScene]).c_str(), ("./objectMatches/" + objectFiles[curObject] + "_" + sceneFiles[curScene]).c_str(), true, false);
+			if (matched)
+			{
+				objectsMatched[curObject] = true;
+				scenesMatched[curScene] = true;
+			}
 			currentTest++;
 		}
 	}
+
+	//report unmatched files
+	wcout << L"Unmatched Samples: " << endl;
+	for (size_t i = 0; i < objectFiles.size(); i++)
+		if (objectsMatched == false)
+			wcout << objectFiles[i].c_str() << endl;
+
+	wcout << endl << L"Unmatched Scenes: " << endl;
+	for (size_t i = 0; i < sceneFiles.size(); i++)
+		if (scenesMatched == false)
+			wcout << sceneFiles[i].c_str() << endl;
+
+	//cleanup
+	delete[] objectsMatched;
+	delete[] scenesMatched;
 }
