@@ -68,7 +68,7 @@ void menu()
 		cin >> choice;
 		cin.get(); //clear newline
 
-				   //perform chosen item
+		//perform chosen item
 		switch (choice)
 		{
 		case 0: //quit
@@ -224,6 +224,11 @@ void menu()
 
 int main(int argc, char* argv[])
 {
+	//standard behavior for console applications is to return 0 on success and other values for anything else.  enum is used for organizational purposes
+	enum ExitCodes { SUCCESS = 0, NOT_A_MATCH = 1, INCORRECT_USAGE = 2};	
+	int exitCode = ExitCodes::SUCCESS;				
+	
+
 	//ensure wcout will actually support unicode (http://stackoverflow.com/a/19258509)
 	//WARNING: this seems to break cout, though there isn't much reason to use it anyway in a unicode project such as this
 	_setmode(_fileno(stdout), _O_U16TEXT);
@@ -250,7 +255,10 @@ int main(int argc, char* argv[])
 			listWindowChildren(getWindowDataFromTitle(window));
 		}
 		else
+		{
 			wcout << L"windowList [windowName]: lists all windows that are children of windowName, or all windows if unspecified." << endl;
+			exitCode = ExitCodes::INCORRECT_USAGE;
+		}
 	} 
 	else if (strcmp(argv[1], "windowScreenshot") == 0)
 	{
@@ -264,7 +272,10 @@ int main(int argc, char* argv[])
 			saveWindowScreenshot(getWindowDataFromTitle(window), file, false);
 		}
 		else
+		{
 			wcout << L"windowScreenshot <windowName> <fileName>: saves a screenshot of the window.  supports .png and .bmp." << endl;
+			exitCode = ExitCodes::INCORRECT_USAGE;
+		}
 	}
 	else if (strcmp(argv[1], "imageContours") == 0)
 	{
@@ -274,7 +285,10 @@ int main(int argc, char* argv[])
 			contoursFromFile(argv[2], 10, 250.0, argv[3]);
 		}
 		else
+		{
 			wcout << L"imageContours <imageIn> <imageOut>: finds contours in the image and saves the result to another image." << endl;
+			exitCode = ExitCodes::INCORRECT_USAGE;
+		}
 	}
 	else if (strcmp(argv[1], "OCR") == 0)
 	{
@@ -287,21 +301,34 @@ int main(int argc, char* argv[])
 			OCRWordCount(in, searchString);
 		}
 		else
+		{
 			wcout << L"OCR <imageName> <searchString>: does OCR on the image and counts occurrences of searchString." << endl;
+			exitCode = ExitCodes::INCORRECT_USAGE;
+		}
 	}
 	else if (strcmp(argv[1], "objectDetection") == 0)
 	{
 		if (argc == 5 || (argc == 6 && strcmp(argv[5], "-v") == 0)) //either there are only five arguments, or there are six and the last is "-v".
-			searchForObjectInImage(argv[2], argv[3], argv[4], (argc == 6), false);
+		{
+			bool result = searchForObjectInImage(argv[2], argv[3], argv[4], (argc == 6), false);
+			if (result == false)
+				exitCode = ExitCodes::NOT_A_MATCH;
+		}
 		else
+		{
 			wcout << L"OCR <imageName> <searchString>: does OCR on the image and counts occurrences of searchString." << endl;
+			exitCode = ExitCodes::INCORRECT_USAGE;
+		}
 	}
 	else if (strcmp(argv[1], "batchObjectDetection") == 0)
 	{
 		if (argc == 2)
 			batchImageTest();
 		else
+		{
 			wcout << L"batchObjectDetection: performs object detection on each image in /objectSamples and each scene in /objectScenes.  Results are saved verbosely to /objectMatches." << endl;
+			exitCode = ExitCodes::INCORRECT_USAGE;
+		}
 	}
 	else
 	{
@@ -313,7 +340,7 @@ int main(int argc, char* argv[])
 			L"OCR <imageName> <searchString>: does OCR on the image and counts occurrences of searchString." << endl <<
 			L"objectDetection <sampleImage> <sceneImage> <outputImage> [-v]: searches for the sample object in the target scene and saves results to the output image.  The -v flag causes output to include match data." << endl <<
 			L"batchObjectDetection: performs object detection on each image in /objectSamples and each scene in /objectScenes.  Results are saved verbosely to /objectMatches." << endl;
-
+		exitCode = ExitCodes::INCORRECT_USAGE;
 	}
 
 	//shut down GDI+
@@ -666,12 +693,12 @@ void batchImageTest()
 	//report unmatched files
 	wcout << L"Unmatched Samples: " << endl;
 	for (size_t i = 0; i < objectFiles.size(); i++)
-		if (objectsMatched == false)
+		if (objectsMatched[i] == false)
 			wcout << objectFiles[i].c_str() << endl;
 
 	wcout << endl << L"Unmatched Scenes: " << endl;
 	for (size_t i = 0; i < sceneFiles.size(); i++)
-		if (scenesMatched == false)
+		if (scenesMatched[i] == false)
 			wcout << sceneFiles[i].c_str() << endl;
 
 	//cleanup
