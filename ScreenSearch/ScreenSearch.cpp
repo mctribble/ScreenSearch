@@ -316,7 +316,7 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			wcout << L"OCR <imageName> <searchString>: does OCR on the image and counts occurrences of searchString." << endl;
+			wcout << L"objectDetection <sampleImage> <sceneImage> <outputImage> [-v]: searches for the sample object in the target scene and saves results to the output image.  The -v flag causes output to include match data." << endl;
 			exitCode = ExitCodes::INCORRECT_USAGE;
 		}
 	}
@@ -346,7 +346,7 @@ int main(int argc, char* argv[])
 	//shut down GDI+
 	GdiplusShutdown(gdiplusToken);
 
-	return 0;
+	return exitCode;
 }
 
 //tests the system by running all features with preset arguments
