@@ -680,13 +680,21 @@ void batchImageTest()
 		for (int curScene = 0; curScene < sceneFiles.size(); curScene++)
 		{
 			wcout << L"[" << currentTest << "/" << totalTestCount << L"]: ";
+			currentTest++;
+
+			//dont test files with the same name
+			if ( objectFiles[curObject] == sceneFiles[curScene] )
+			{
+				wcout << L"Skipped (identical file names)" << endl;
+				continue;
+			}
+
 			bool matched = searchForObjectInImage(("./objectSamples/" + objectFiles[curObject]).c_str(), ("./objectScenes/" + sceneFiles[curScene]).c_str(), ("./objectMatches/" + objectFiles[curObject] + "_" + sceneFiles[curScene]).c_str(), true, false);
 			if (matched)
 			{
 				objectsMatched[curObject] = true;
 				scenesMatched[curScene] = true;
 			}
-			currentTest++;
 		}
 	}
 
