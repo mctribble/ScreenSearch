@@ -627,6 +627,57 @@ bool searchForObjectInImage(const char* object,const char* scene,const char* fil
 
 void batchImageTest() 
 {
+	//offer to clean up the match folder first
+	char response = '0';
+	do
+	{
+		wcout << "Would you like to delete existing images in the objectMatches folder first? [y/n]" << endl;
+		cin >> response;
+	} while (!cin.fail() && response != 'y' && response != 'Y' && response != 'n' && response != 'N');
+
+	//if yes, delete files ending in .png, .bmp, .jpg, or .JPG
+	if (response == 'y' || response == 'Y')
+	{
+		//find all files in /objectMatches
+		vector <string> oldMatchFiles;
+		WIN32_FIND_DATAA curFileData;
+
+		//init file search
+		HANDLE curFileHandle = FindFirstFileA("./objectMatches/*", &curFileData); //get the first file
+		if (curFileHandle == INVALID_HANDLE_VALUE)
+		{
+			wcerr << L"failed to find first file";
+			return;
+		}
+
+		do {
+			if (!(curFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) //if this file is NOT a directory
+			{
+				string fileName = curFileData.cFileName; //get the file name
+				string extension = fileName.substr(fileName.length() - 4, string::npos);
+
+				//if extension is .png, .bmp, .jpg, or .JPG, put its file name in the list
+				if (extension == ".png" ||
+					extension == ".bmp" ||
+					extension == ".jpg" ||
+					extension == ".JPG")
+				{
+					oldMatchFiles.push_back(fileName);
+				}
+			}
+		} while (FindNextFileA(curFileHandle, &curFileData) != 0); //keep going until we run out of files
+		FindClose(curFileHandle);
+
+		//remove the old files
+		wcout << L"removing " << oldMatchFiles.size() << " files." << endl;
+
+		for (size_t i = 0; i < oldMatchFiles.size(); i++)
+		{
+			string remString = "objectMatches\\" + oldMatchFiles[i];
+			remove(remString.c_str());
+		}
+	}
+
 	//find all files in /objectSamples
 	vector <string> objectFiles;
 	WIN32_FIND_DATAA curFileData;
