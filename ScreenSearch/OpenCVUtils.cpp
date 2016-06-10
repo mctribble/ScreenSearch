@@ -160,14 +160,14 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 		
 
-	//error detection: detected region is very small
-	const double MIN_AREA = 1500.0;
-	double area = contourArea(sceneCorners);
-	if (area < MIN_AREA)
-	{
-		wcout << L"region too small (" << area << L"/" << MIN_AREA << L")";
-		return Mat();
-	}
+	////error detection: detected region is very small
+	//const double MIN_AREA = 1500.0;
+	//double area = contourArea(sceneCorners);
+	//if (area < MIN_AREA)
+	//{
+	//	wcout << L"region too small (" << area << L"/" << MIN_AREA << L")";
+	//	return Mat();
+	//}
 		
 
 	//experimental error detection: two corners are very close together (usually from deformed regions)
