@@ -61,9 +61,11 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		return Mat();
 	}
 
-	//two different keypoint algorithms.  KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
-	Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
-	//Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+	//two different keypoint algorithms.  
+	//KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
+	//WARNING: KAZE also uses significantly more memory, and my cause crashes with large images on some machines
+	//Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
+	Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
 
 	//keypoint detection and description data
 	vector<KeyPoint>	allObjectKeypoints;	//keypoints found in the object sample image
