@@ -8,7 +8,7 @@
 
 const double PI = 3.1415926535897932384626433832795;
 const double PI_2 = 1.5707963267948966192313216916398;
-const double PI_4 = 0.78539816339744830961566084581988;
+const double PI_8 = 0.39269908169872415480783042290994;
 
 using namespace cv;
 using namespace std;
@@ -168,7 +168,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	//angles are in radians
 	vector<double> cornerAngles;
 	polyAngles(&sceneCorners, &cornerAngles);
-	const double MIN_ANGLE = PI_4 / 2.0;
+	const double MIN_ANGLE = PI_8;
 	const double MAX_ANGLE = PI;
 	for (int i = 0; i < 4; i++)
 	{
