@@ -124,7 +124,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//error detection: not enough matches
-	size_t MIN_MATCH_COUNT = 30;
+	size_t MIN_MATCH_COUNT = 10;
 	size_t matchCount = closeKeypointMatches.size();
 	if (matchCount < MIN_MATCH_COUNT)
 	{
@@ -186,7 +186,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//error detection: two corners are very close together (usually from regions that are deformed or very small)
 	//testing based on distance squared for performance reasons
-	const double MIN_ALLOWED_DIST_SQUARED = 5000;
+	const double MIN_ALLOWED_DIST_SQUARED = 100;
 	double curDistSquared[6];
 	curDistSquared[0] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[1]); 
 	curDistSquared[1] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[2]); 
