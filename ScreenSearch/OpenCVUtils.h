@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <Windows.h>
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 
@@ -23,3 +24,7 @@ bool matToFile(cv::Mat src, LPCSTR dest, bool showPrompt = false);
 
 //returns distance squared between two points
 inline float Point2fDistanceSquared(cv::Point2f a, cv::Point2f b);
+
+//takes a set of polygon corners and returns the interior angle of each in radians
+//assumes clockwise winding order
+void polyAngles(std::vector<cv::Point2f>* polyCorners, std::vector<double>* polyAngles);

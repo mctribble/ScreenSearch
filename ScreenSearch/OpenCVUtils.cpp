@@ -1,11 +1,14 @@
 #include "OpenCVUtils.h"
-#include <stdio.h>
 #include <iostream>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
-//#include "opencv2/xfeatures2d.hpp"
+#include <cmath>
+
+const double PI = 3.1415926535897932384626433832795;
+const double PI_2 = 1.5707963267948966192313216916398;
+const double PI_4 = 0.78539816339744830961566084581988;
 
 using namespace cv;
 using namespace std;
@@ -75,7 +78,9 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//perform keypoint detection
 	keypointDetector->detectAndCompute(objectSampleImage, Mat(), allObjectKeypoints, objectDescriptors);
+	wcout << L"."; //add a . to show progress
 	keypointDetector->detectAndCompute(sceneToSearch, Mat(), allSceneKeypoints, sceneDescriptors);
+	wcout << L"."; //add a . to show progress
 
 	//error detection: no keypoints
 	if (allObjectKeypoints.empty() || allSceneKeypoints.empty())
@@ -157,39 +162,52 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	{
 		wcout << L"outside the scene";
 		return Mat();
-	}
-		
+	}	
 
-	////error detection: detected region is very small
-	//const double MIN_AREA = 1500.0;
-	//double area = contourArea(sceneCorners);
-	//if (area < MIN_AREA)
-	//{
-	//	wcout << L"region too small (" << area << L"/" << MIN_AREA << L")";
-	//	return Mat();
-	//}
-		
-
-	//experimental error detection: two corners are very close together (usually from deformed regions)
-	//testing based on distance squared for performance reasons
-	const double MIN_DIST_SQUARED = 2500;
-	if ((Point2fDistanceSquared(sceneCorners[0], sceneCorners[1]) < MIN_DIST_SQUARED) ||
-		(Point2fDistanceSquared(sceneCorners[0], sceneCorners[2]) < MIN_DIST_SQUARED) ||
-		(Point2fDistanceSquared(sceneCorners[0], sceneCorners[3]) < MIN_DIST_SQUARED) ||
-		(Point2fDistanceSquared(sceneCorners[1], sceneCorners[2]) < MIN_DIST_SQUARED) ||
-		(Point2fDistanceSquared(sceneCorners[1], sceneCorners[3]) < MIN_DIST_SQUARED) ||
-		(Point2fDistanceSquared(sceneCorners[2], sceneCorners[3]) < MIN_DIST_SQUARED))
+	//error detection: since the source image is always rectangular, detected regions with very small or very large angles are likely false positives
+	//angles are in radians
+	vector<double> cornerAngles;
+	polyAngles(&sceneCorners, &cornerAngles);
+	const double MIN_ANGLE = PI_4 / 2.0;
+	const double MAX_ANGLE = PI;
+	for (int i = 0; i < 4; i++)
 	{
-		wcout << "corners too close";
-		return Mat();
+		if (cornerAngles[i] < MIN_ANGLE)
+		{
+			wcout << L"Corner angle too small (" << cornerAngles[i] << " < " << MIN_ANGLE << ")";
+			return Mat();
+		} 
+		else if (cornerAngles[i] > MAX_ANGLE) 
+		{
+			wcout << L"Corner angle too large (" << cornerAngles[i] << " > " << MAX_ANGLE << ")";
+			return Mat();
+		}
 	}
-		
+
+	//error detection: two corners are very close together (usually from regions that are deformed or very small)
+	//testing based on distance squared for performance reasons
+	const double MIN_ALLOWED_DIST_SQUARED = 5000;
+	double curDistSquared[6];
+	curDistSquared[0] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[1]); 
+	curDistSquared[1] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[2]); 
+	curDistSquared[2] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[3]); 
+	curDistSquared[3] = Point2fDistanceSquared(sceneCorners[1], sceneCorners[2]); 
+	curDistSquared[4] = Point2fDistanceSquared(sceneCorners[1], sceneCorners[3]); 
+	curDistSquared[5] = Point2fDistanceSquared(sceneCorners[2], sceneCorners[3]); 
+	for (int i = 0; i < 6; i++)
+	{
+		if (curDistSquared[i] < MIN_ALLOWED_DIST_SQUARED)
+		{
+			wcout << "corners too close (" << curDistSquared[i] << " < " << MIN_ALLOWED_DIST_SQUARED << ")";
+			return Mat();
+		}
+	}
 
 	//create a new image to use as our output that supports color
 	Mat result = Mat(sceneToSearch.size(), CV_8UC3);
 	cvtColor(sceneToSearch, result, CV_GRAY2BGR); //uses BGR instead of RGB because that is the default in openCV
 
-	//regardless of showPrompt, we want thcase 0e object to be highlighted in the scene.  We draw this outline first:
+	//regardless of showPrompt, we want the object to be highlighted in the scene.  We draw this outline first:
 	line(result, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 4);
 	line(result, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 4);
 	line(result, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 4);
@@ -244,4 +262,31 @@ bool matToFile(cv::Mat src, LPCSTR fileName, bool showPrompt)
 inline float Point2fDistanceSquared(Point2f a, Point2f b)
 {
 	return (((a.x - b.x)*(a.x - b.x)) + ((a.y - b.y)*(a.y - b.y)));
+}
+
+//takes a set of polygon corners and returns the interior angle of each in radians
+//assumes clockwise winding order
+void polyAngles(std::vector<cv::Point2f>* polyCorners, std::vector<double>* polyAngles)
+{
+	size_t cornerCount = polyCorners->size();
+	polyAngles->resize(cornerCount);
+	for (size_t i = 0; i < cornerCount; i++)
+	{
+		//get vectors of adjacent segments
+		Vec2f a = Vec2f(polyCorners->at((i + 1)               % cornerCount) - polyCorners->at(i));
+		Vec2f b = Vec2f(polyCorners->at((i - 1 + cornerCount) % cornerCount) - polyCorners->at(i));
+
+		//special case: dot product is 0
+		if (a.ddot(b) == 0)
+		{
+			polyAngles->at(i) = PI_2;
+		}
+
+		//cosine formula
+		double cosine = a.ddot(b) / (norm(a) * norm(b));
+		
+		//calculate angle
+		polyAngles->at(i) = acos(cosine);
+	}
+	return;
 }

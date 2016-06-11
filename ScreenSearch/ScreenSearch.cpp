@@ -609,7 +609,7 @@ void OCRWordCount(wchar_t* inputFileName, wstring searchString)
 bool searchForObjectInImage(const char* object,const char* scene,const char* fileName, bool showKeypoints, bool showPrompts)
 {
 	//do search
-	wcout << L"Image search: find " << object << " in " << scene << "..........";
+	wcout << L"Image search: find " << object << " in " << scene << ".";
 	Mat searchResult = findObjectInImage(imread(object, IMREAD_GRAYSCALE), imread(scene, IMREAD_GRAYSCALE), showKeypoints);
 
 	if (searchResult.empty())
