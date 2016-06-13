@@ -8,7 +8,6 @@
 
 const double PI = 3.1415926535897932384626433832795;
 const double PI_2 = 1.5707963267948966192313216916398;
-const double PI_8 = 0.39269908169872415480783042290994;
 
 using namespace cv;
 using namespace std;
@@ -124,7 +123,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//error detection: not enough matches
-	size_t MIN_MATCH_COUNT = 10;
+	size_t MIN_MATCH_COUNT = 20;
 	size_t matchCount = closeKeypointMatches.size();
 	if (matchCount < MIN_MATCH_COUNT)
 	{
@@ -164,29 +163,9 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		return Mat();
 	}	
 
-	//error detection: since the source image is always rectangular, detected regions with very small or very large angles are likely false positives
-	//angles are in radians
-	vector<double> cornerAngles;
-	polyAngles(&sceneCorners, &cornerAngles);
-	const double MIN_ANGLE = PI_8;
-	const double MAX_ANGLE = PI;
-	for (int i = 0; i < 4; i++)
-	{
-		if (cornerAngles[i] < MIN_ANGLE)
-		{
-			wcout << L"Corner angle too small (" << cornerAngles[i] << " < " << MIN_ANGLE << ")";
-			return Mat();
-		} 
-		else if (cornerAngles[i] > MAX_ANGLE) 
-		{
-			wcout << L"Corner angle too large (" << cornerAngles[i] << " > " << MAX_ANGLE << ")";
-			return Mat();
-		}
-	}
-
 	//error detection: two corners are very close together (usually from regions that are deformed or very small)
 	//testing based on distance squared for performance reasons
-	const double MIN_ALLOWED_DIST_SQUARED = 100;
+	const double MIN_ALLOWED_DIST_SQUARED = 250;
 	double curDistSquared[6];
 	curDistSquared[0] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[1]); 
 	curDistSquared[1] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[2]); 
@@ -199,6 +178,26 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		if (curDistSquared[i] < MIN_ALLOWED_DIST_SQUARED)
 		{
 			wcout << "corners too close (" << curDistSquared[i] << " < " << MIN_ALLOWED_DIST_SQUARED << ")";
+			return Mat();
+		}
+	}
+
+	//error detection: since the source image is always rectangular, detected regions with very small or very large angles are likely false positives
+	//angles are in radians
+	vector<double> cornerAngles;
+	polyAngles(&sceneCorners, &cornerAngles);
+	const double MIN_ANGLE = PI / 32;
+	const double MAX_ANGLE = PI;
+	for (int i = 0; i < 4; i++)
+	{
+		if (cornerAngles[i] < MIN_ANGLE)
+		{
+			wcout << L"Corner angle too small (" << cornerAngles[i] << " < " << MIN_ANGLE << ")";
+			return Mat();
+		}
+		else if (cornerAngles[i] > MAX_ANGLE)
+		{
+			wcout << L"Corner angle too large (" << cornerAngles[i] << " > " << MAX_ANGLE << ")";
 			return Mat();
 		}
 	}
