@@ -240,7 +240,10 @@ int main(int argc, char* argv[])
 
 	//if there are no arguments, the user is given a menu
 	if (argc == 1)
+	{
 		menu();
+		return;
+	}
 
 	//otherwise, act according to the arguments
 	if (strcmp(argv[1], "windowList") == 0)

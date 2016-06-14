@@ -68,7 +68,10 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	//WARNING: KAZE also uses significantly more memory, and may cause crashes with large images on some machines
 	//choose algorithm based on image size, since KAZE works much better but has trouble with large images
 	Ptr<Feature2D> keypointDetector;
-	const unsigned int MAX_TOTAL_AREA = 15000000; //if the combined area of both images is larger than this, use ORB
+	//if the combined area of both images is larger than this, use ORB
+	//this value is based on my dev machine, which has only 4GB memory.
+	//depending on your specs, you may be able to increase this figure considerably.
+	const unsigned int MAX_TOTAL_AREA = 15000000; 
 	unsigned int totalArea = (objectSampleImage.cols * objectSampleImage.rows) + (sceneToSearch.cols * sceneToSearch.rows);
 	if ( totalArea > MAX_TOTAL_AREA )
 	{
@@ -140,7 +143,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	vector<Point2f> closeObjectKeypoints, closeSceneKeypoints;	//points from said matches
 	for (int i = 0; i < objectDescriptors.rows; i++)
 	{
-		if (allKeypointMatches[i].distance <= (minMatchDistance * 2.5))
+		if (allKeypointMatches[i].distance <= (minMatchDistance * 3.0))
 		{
 			closeKeypointMatches.push_back(allKeypointMatches[i]);
 			closeObjectKeypoints.push_back(allObjectKeypoints[allKeypointMatches[i].queryIdx].pt);
@@ -149,7 +152,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//error detection: not enough matches
-	size_t MIN_MATCH_COUNT = 25;
+	size_t MIN_MATCH_COUNT = 30;
 	size_t matchCount = closeKeypointMatches.size();
 	if (matchCount < MIN_MATCH_COUNT)
 	{
@@ -188,6 +191,15 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 		wcout << L"outside the scene";
 		return Mat();
 	}	
+
+	//error detection: detected region is very small
+	const double MIN_AREA = 1500.0;
+	double area = contourArea(sceneCorners);
+	if (area < MIN_AREA)
+	{
+		wcout << L"region too small (" << area << L"/" << MIN_AREA << L")";
+		return Mat();
+	}
 
 	//error detection: two corners are very close together (usually from regions that are deformed or very small)
 	//testing based on distance squared for performance reasons
