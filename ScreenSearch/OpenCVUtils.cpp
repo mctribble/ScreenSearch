@@ -65,9 +65,21 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//two different keypoint algorithms.  
 	//KAZE is more accurate, but ORB is much faster, especially for larger images with a lot of keypoints
-	//WARNING: KAZE also uses significantly more memory, and my cause crashes with large images on some machines
-	//Ptr<KAZE>			keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
-	Ptr<ORB>			keypointDetector = ORB::create();	//ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+	//WARNING: KAZE also uses significantly more memory, and may cause crashes with large images on some machines
+	//choose algorithm based on image size, since KAZE works much better but has trouble with large images
+	Ptr<Feature2D> keypointDetector;
+	const unsigned int MAX_TOTAL_AREA = 15000000; //if the combined area of both images is larger than this, use ORB
+	unsigned int totalArea = (objectSampleImage.cols * objectSampleImage.rows) + (sceneToSearch.cols * sceneToSearch.rows);
+	if ( totalArea > MAX_TOTAL_AREA )
+	{
+		wcout << "*"; //show an indication that we reverted to ORB
+		keypointDetector = ORB::create(); //ORB keypoint detector.  (http://docs.opencv.org/3.1.0/db/d95/classcv_1_1ORB.html#gsc.tab=0)
+	}
+	else
+	{
+		keypointDetector = KAZE::create();	//KAZE keypoint detector.  (http://docs.opencv.org/3.1.0/d3/d61/classcv_1_1KAZE.html#gsc.tab=0)
+	}
+
 
 	//keypoint detection and description data
 	vector<KeyPoint>	allObjectKeypoints;	//keypoints found in the object sample image
@@ -76,10 +88,24 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	Mat					sceneDescriptors;	//describes keypoints found in the image being searched
 
 	//perform keypoint detection
-	keypointDetector->detectAndCompute(objectSampleImage, Mat(), allObjectKeypoints, objectDescriptors);
-	wcout << L"."; //add a . to show progress
-	keypointDetector->detectAndCompute(sceneToSearch, Mat(), allSceneKeypoints, sceneDescriptors);
-	wcout << L"."; //add a . to show progress
+	try
+	{
+		keypointDetector->detectAndCompute(objectSampleImage, Mat(), allObjectKeypoints, objectDescriptors);
+		wcout << L"."; //add a . to show progress
+		keypointDetector->detectAndCompute(sceneToSearch, Mat(), allSceneKeypoints, sceneDescriptors);
+		wcout << L"."; //add a . to show progress
+	}
+	catch (const cv::Exception e)
+	{
+		//we had an exception, proably from running out of memory.  print the area and wait for user input.
+		//we dont need to print the error message because opencv does this internally anyway.
+		wcerr << L"(Area: " << totalArea << L")" << endl;
+		cin.clear();
+		wcout << L"Press enter to conintue." << endl;
+		cin.get();
+		return Mat();
+	}
+	
 
 	//error detection: no keypoints
 	if (allObjectKeypoints.empty() || allSceneKeypoints.empty())
@@ -101,7 +127,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	keypointMatcher.match(objectDescriptors, sceneDescriptors, allKeypointMatches);
 
 	//find the minimum distance between any two matched keypoints
-	double minMatchDistance = 100; //it is important this is 100-ish and not DBL_MAX to specify a minimum precision for "close" matches (see below)
+	double minMatchDistance = 100; //it is important this is not DBL_MAX to specify a minimum precision for "close" matches (see below)
 	for (int i = 0; i < objectDescriptors.rows; i++)
 	{
 		double curDist = allKeypointMatches[i].distance;
@@ -114,7 +140,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	vector<Point2f> closeObjectKeypoints, closeSceneKeypoints;	//points from said matches
 	for (int i = 0; i < objectDescriptors.rows; i++)
 	{
-		if (allKeypointMatches[i].distance <= (minMatchDistance * 3.0))
+		if (allKeypointMatches[i].distance <= (minMatchDistance * 2.5))
 		{
 			closeKeypointMatches.push_back(allKeypointMatches[i]);
 			closeObjectKeypoints.push_back(allObjectKeypoints[allKeypointMatches[i].queryIdx].pt);
@@ -123,7 +149,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//error detection: not enough matches
-	size_t MIN_MATCH_COUNT = 20;
+	size_t MIN_MATCH_COUNT = 25;
 	size_t matchCount = closeKeypointMatches.size();
 	if (matchCount < MIN_MATCH_COUNT)
 	{
@@ -165,7 +191,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//error detection: two corners are very close together (usually from regions that are deformed or very small)
 	//testing based on distance squared for performance reasons
-	const double MIN_ALLOWED_DIST_SQUARED = 250;
+	const double MIN_ALLOWED_DIST_SQUARED = 300;
 	double curDistSquared[6];
 	curDistSquared[0] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[1]); 
 	curDistSquared[1] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[2]); 

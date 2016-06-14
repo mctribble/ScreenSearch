@@ -44,6 +44,7 @@ ScreenSearch.VC.opendb
 ScreenSearch/test*
 ScreenSearch/objectMatches/*.jpg
 ScreenSearch/objectMatches/*.zip
+ScreenSearch/objectMatches/batch*
 ScreenSearch/OCR_Result.txt
 
 # Build results
