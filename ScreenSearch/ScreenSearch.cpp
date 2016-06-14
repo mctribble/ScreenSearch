@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
 	if (argc == 1)
 	{
 		menu();
-		return;
+		return 0;
 	}
 
 	//otherwise, act according to the arguments

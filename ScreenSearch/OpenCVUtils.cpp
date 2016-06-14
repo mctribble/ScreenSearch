@@ -152,7 +152,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}
 
 	//error detection: not enough matches
-	size_t MIN_MATCH_COUNT = 30;
+	size_t MIN_MATCH_COUNT = 15;
 	size_t matchCount = closeKeypointMatches.size();
 	if (matchCount < MIN_MATCH_COUNT)
 	{
@@ -193,7 +193,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	}	
 
 	//error detection: detected region is very small
-	const double MIN_AREA = 1500.0;
+	const double MIN_AREA = 750.0;
 	double area = contourArea(sceneCorners);
 	if (area < MIN_AREA)
 	{
@@ -203,7 +203,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 
 	//error detection: two corners are very close together (usually from regions that are deformed or very small)
 	//testing based on distance squared for performance reasons
-	const double MIN_ALLOWED_DIST_SQUARED = 300;
+	const double MIN_ALLOWED_DIST_SQUARED = 150;
 	double curDistSquared[6];
 	curDistSquared[0] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[1]); 
 	curDistSquared[1] = Point2fDistanceSquared(sceneCorners[0], sceneCorners[2]); 
@@ -224,7 +224,7 @@ cv::Mat findObjectInImage(cv::Mat objectSampleImage, cv::Mat sceneToSearch, bool
 	//angles are in radians
 	vector<double> cornerAngles;
 	polyAngles(&sceneCorners, &cornerAngles);
-	const double MIN_ANGLE = PI / 32;
+	const double MIN_ANGLE = PI / 64;
 	const double MAX_ANGLE = PI;
 	for (int i = 0; i < 4; i++)
 	{
